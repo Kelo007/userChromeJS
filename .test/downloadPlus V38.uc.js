@@ -7,6 +7,8 @@
 // @include      chrome://browser/content/places/places.xul
 // @include      chrome://mozapps/content/downloads/unknownContentType.xul
 // @include      chrome://mozapps/content/downloads/downloads.xul
+// @optionsURL about:config?filter=userChromeJS.downloadPlus.
+// @config 	 window.downloadPlus.openPref();
 // @version      2015.05.01 修复多个功能，增加设置UI
 // @version      2014.11.02 增加多个功能
 // @version      2014.06.06 add delay to fix for new userChrome.js
@@ -23,7 +25,8 @@
 	var downloadPlus = {
 		get prefs() {
 			delete this.prefs;
-			return this.prefs = Services.prefs.getBranch("userChromeJS.downloadPlus.");
+			return this.prefs = Components.classes['@mozilla.org/preferences-service;1'].getService(Ci.nsIPrefService).QueryInterface(Ci.nsIPrefBranch)
+			            .getBranch("userChromeJS.downloadPlus.");
 		},
 		get Window() {
 			var windowsMediator = Components.classes["@mozilla.org/appshell/window-mediator;1"]
@@ -114,7 +117,7 @@
 							download_dialog_doubleclicksaveL(self.getPrefs("download_dialog_doubleclicksaveL"));
 						}
 					            window.sizeToContent(); // 下载弹出窗口大小自适应(确保在添加的按钮之后加载)
-					}, 200);
+					}, 500);
 					break;
 				case "chrome://browser/content/places/places.xul":
 					setTimeout(function() {
