@@ -294,12 +294,12 @@
 					list.addView({
 						onDownloadChanged: function(dl) {
 							if (convert) {
-								if (dl.progress == 100 && saveAndOpen.urls.indexOf(dl.source.url) > -1) {
+								if (dl.progress == 100 && saveAndOpen.urls.indexOf(dl.source.url) >= -1) {
 									dl.reveal(); //或者打开 launch
 									saveAndOpen.urls[saveAndOpen.urls.indexOf(dl.source.url)] = "";
 								}
 							} else {
-								if (dl.progress == 100 && saveAndOpen.urls.indexOf(dl.source.url) > -1) {
+								if (dl.progress == 100 && saveAndOpen.urls.indexOf(dl.source.url) >= -1) {
 									(new FileUtils.File(dl.target.path)).reveal(); //或者打开 launch
 									saveAndOpen.urls[saveAndOpen.urls.indexOf(dl.source.url)] = "";
 								}
