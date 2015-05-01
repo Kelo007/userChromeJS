@@ -48,13 +48,13 @@
 		PrefsObs: function(subject, topic, data) {
 			if (topic == 'nsPref:changed') {
 				switch (data) {
-					case 'new_Download': //2个
-					case 'downloadsPanel_removeFile': //2个
+					case 'new_Download':
+					case 'downloadsPanel_removeFile':
 					case 'downloadSound_Play':
 					case 'downloadFileSize':
 					case 'autoClose_blankTab':
-					case 'save_And_Open': //2个
-					case 'download_dialog_changeName': //2个
+					case 'save_And_Open':
+					case 'download_dialog_changeName':
 					case 'download_dialog_saveas':
 					case 'download_dialog_saveTo':
 					case 'download_dialog_showCompleteURL':
