@@ -17,6 +17,7 @@
 // @version      2015.05.01 修复多个功能，增加设置UI
 // @version      2014.11.02 增加多个功能
 // @version      2014.06.06 add delay to fix for new userChrome.js
+// @note         设置菜单在菜单栏里，id为downloadPlus_set。
 // ==/UserScript==
 (function() {
 	let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
@@ -299,7 +300,7 @@
 							<hbox align="center">\
 							            <checkbox id="download_dialog_saveTo" label="保存到" oncommand="_changeStatus(event)" align="center" preference="download_dialog_saveTo"/>\
 							            <label value="后缀样式：" align="center"/>\
-							            <menulist align="center" preference="download_dialog_saveTo_suffix" id="download_dialog_saveTo_suffix" style="width:220px">\
+							            <menulist preference="download_dialog_saveTo_suffix" id="download_dialog_saveTo_suffix" style="width:220px">\
 								            <menupopup>\
 									            <menuitem label="样式：如downloadPlus.uc.js(1).7z" value="0"/>\
 									            <menuitem label="样式：如downloadPlus.uc.js-1.7z" value="1"/>\
@@ -320,7 +321,7 @@
 							<checkbox id="downloadsPanel_removeFile" label="从硬盘中删除 （主界面、我的足迹）" tooltiptext="修改暂时需重启生效，很快会更新" preference="downloadsPanel_removeFile"/>\
 							<hbox align="center">\
 							            <checkbox id="save_And_Open" label="保存并打开（主界面、下载界面）" tooltiptext="修改暂时需重启生效，很快会更新" oncommand="_changeStatus(event)" preference="save_And_Open"/>\
-							            <label value="打开方式：" align="center"/>\
+							            <label value="打开方式："/>\
 							            <menulist align="center" preference="save_And_Open_RorL" id="save_And_Open_RorL" style="width:120px">\
 								            <menupopup>\
 									            <menuitem label="打开所在文件夹" value="0"/>\
@@ -531,6 +532,7 @@
 								.replace(/moz\-icon\:\/\/file\:\/\/\//, "").replace(/\?size\=32$/, "")
 								.replace(/\?size\=32\&state\=normal$/, "").replace(/\//g, "\\\\");
 							if (DownloadsView.richListBox.selectedItem.getAttribute('state') == "2") path = path + ".part";
+							if (!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
 						}
 					} else {
 						DownloadsView = document.getElementById("downloadsRichListBox")._placesView;
