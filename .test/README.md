@@ -7,6 +7,7 @@ downloadPlus V38.uc.js
 修复此脚本在 Firefox V38 下的各种问题。  
 还有点小问题，正在测试中...  
 #更新记录  
+2015.05.03 修复一些Bug，脚本开关无需重启了  
 2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能  
 2015.05.01 修复多个功能，增加设置UI  
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.jpg "downloadPlus 设置")  
