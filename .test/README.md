@@ -6,9 +6,18 @@ downloadPlus V38.uc.js
 ----------------------------------- 
 修复此脚本在 Firefox V38 下的各种问题。  
 还有点小问题，正在测试中...  
+###说明  
+从硬盘中删除+下载重命名并可转码+双击复制链接+另存为+保存并打开+完成下载提示音+自动关闭下载产生的空白标签。 
+设置菜单在菜单栏里，id为downloadPlus_set。 
+  
+从硬盘中删除、保存并打开 功能由打开到关闭需要重启后生效（暂时这样马上会更新的）。  
+保存到 设置文件夹的UI 正在开发中，敬请期待。  <i>如要修改在脚本826行。</i>   
+根据后缀名自动保存到指定文件夹 功能正在开发中，敬请期待。  
+###图片  
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.jpg "downloadPlus 设置")  
 ###更新记录  
 2015.05.03 修复一些Bug，脚本开关无需重启了  
 2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能  
 2015.05.01 修复多个功能，增加设置UI  
-![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.jpg "downloadPlus 设置")  
+
 
