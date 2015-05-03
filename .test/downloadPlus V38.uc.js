@@ -50,7 +50,7 @@
 			}
 			this.loadSetting();
 			window.addEventListener("unload", function() {
-				AwesomeBookmarkbar.onDestroy();
+				downloadPlus.onDestroy();
 			}, false);
 		},
 
