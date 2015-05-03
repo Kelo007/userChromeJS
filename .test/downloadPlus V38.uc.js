@@ -625,7 +625,7 @@
 			saveAndOpen.setAttribute("label", "\u4FDD\u5B58\u5E76\u6253\u5F00");
 			saveAndOpen.setAttribute("oncommand", 'Components.classes["@mozilla.org/browser/browserglue;1"].getService(Components.interfaces.nsIBrowserGlue).getMostRecentBrowserWindow().saveAndOpen.urls.push(dialog.mLauncher.source.asciiSpec);document.querySelector("#save").click();document.documentElement.getButton("accept").disabled=0;document.documentElement.getButton("accept").click()')
 		}
-		//作用于 main 窗口
+	//作用于 main 窗口
 	function saveAndOpen_on_main(enable) {
 		if (!enable) return;
 		Components.utils.import("resource://gre/modules/Downloads.jsm");
