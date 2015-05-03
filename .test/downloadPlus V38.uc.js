@@ -2,169 +2,186 @@
 // @name         downloadPlus V38.uc.js
 // @description  从硬盘中删除+下载重命名并可转码+双击复制链接+另存为+保存并打开+完成下载提示音+自动关闭下载产生的空白标签。
 // @author       Kelo 再次修改整合  (w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞)
-// @charset     UTF-8
+// @charset      UTF-8
 // @include      chrome://browser/content/browser.xul
 // @include      chrome://browser/content/places/places.xul
 // @include      chrome://mozapps/content/downloads/unknownContentType.xul
 // @include      chrome://mozapps/content/downloads/downloads.xul
-// @optionsURL about:config?filter=userChromeJS.downloadPlus.
+// @inspect      window.downloadPlus
+// @startup      window.downloadPlus.init();
+// @shutdown     window.downloadPlus.onDestroy();
+// @optionsURL   about:config?filter=userChromeJS.downloadPlus.
 // @config 	 window.downloadPlus.openPref();
+// @version      2015.05.03 修复一些Bug，脚本开关无需重启了
 // @version      2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能
 // @version      2015.05.01 修复多个功能，增加设置UI
 // @version      2014.11.02 增加多个功能
 // @version      2014.06.06 add delay to fix for new userChrome.js
 // ==/UserScript==
 (function() {
+	let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
+	if (window.downloadPlus) {
+		window.downloadPlus.onDestroy();
+		delete window.downloadPlus;
+	}
+	if (!window.Services) Cu.import("resource://gre/modules/Services.jsm");
+	if (!window.DownloadUtils) Cu.import("resource://gre/modules/DownloadUtils.jsm");
 
-		let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
-		if (!window.Services) Cu.import("resource://gre/modules/Services.jsm");
-		if (!window.DownloadUtils) Cu.import("resource://gre/modules/DownloadUtils.jsm");
+	var downloadPlus = {
+		get prefs() {
+			delete this.prefs;
+			return this.prefs = Services.prefs.getBranch("userChromeJS.downloadPlus.");
+		},
+		get Window() Services.wm.getMostRecentWindow("downloadPlus:Preferences"),
+		get mainwin() Services.wm.getMostRecentWindow("navigator:browser"),
+		get appVersion() Services.appinfo.version.split(".")[0],
 
-		var downloadPlus = {
-			get prefs() {
-				delete this.prefs;
-				return this.prefs = Services.prefs.getBranch("userChromeJS.downloadPlus.");
-			},
-			get Window() Services.wm.getMostRecentWindow("downloadPlus:Preferences"),
-			get mainwin() Services.wm.getMostRecentWindow("navigator:browser"),
-			get appVersion() Services.appinfo.version.split(".")[0],
+		init: function() {
+			if (location.href == "chrome://browser/content/browser.xul") {
+				var ins = $("devToolsSeparator", this.mainwin.document);
+				ins.parentNode.insertBefore($C("menuitem", {
+					id: "downloadPlus_set",
+					label: "downloadPlus 配置",
+					oncommand: "downloadPlus.openPref();",
+					class: "menuitem-iconic",
+				}), ins);
+				this.prefs.addObserver('', this.PrefsObs, false);
+				this.loadDefault();
+			}
+			this.loadSetting();
+			window.addEventListener("unload", function() {
+				AwesomeBookmarkbar.onDestroy();
+			}, false);
+		},
 
-			init: function() {
-				if (location.href == "chrome://browser/content/browser.xul") {
-					var ins = $("devToolsSeparator", this.mainwin.document);
-					ins.parentNode.insertBefore($C("menuitem", {
-						id: "downloadPlus_set",
-						label: "downloadPlus 配置",
-						oncommand: "downloadPlus.openPref();",
-						class: "menuitem-iconic",
-					}), ins);
-					this.prefs.addObserver('', this.PrefsObs, false);
-					this.loadDefault();
-				}
-				this.loadSetting();
-			},
+		onDestroy: function() {
+			if ($("downloadPlus_set")) $("downloadPlus_set").parentNode.removeChild($("downloadPlus_set"));
+			this.prefs.removeObserver('', this.PrefsObs, false);
+			if (this.Window) this.Window.close();
+			Services.obs.notifyObservers(null, "startupcache-invalidate", "");
+		},
 
-			PrefsObs: function(subject, topic, data) {
-				if (topic == 'nsPref:changed') {
-					switch (data) {
-						case 'new_Download':
-						case 'new_Download_popups':
-						case 'downloadsPanel_removeFile':
-						case 'downloadSound_Play':
-						case 'downloadFileSize':
-						case 'autoClose_blankTab':
-						case 'save_And_Open':
-						case 'save_And_Open_RorL':
-						case 'download_dialog_changeName':
-						case 'download_dialog_changeName_encodingConvert':
-						case 'download_dialog_changeName_locking':
-						case 'download_dialog_saveas':
-						case "download_dialog_saveas_dir":
-						case 'download_dialog_saveTo':
-						case 'download_dialog_saveTo_suffix':
-						case 'download_dialog_showCompleteURL':
-						case 'download_dialog_doubleclicksaveL':
-						case 'download_dialog_doubleclickanyW':
-							downloadPlus.loadSetting(data);
-							break;
-					}
-				}
-			},
-
-			loadDefault: function() {
-				this.Default_DownloadUtils_convertByteUnits = DownloadUtils.convertByteUnits;
-				this.Default_gBrowser_mTabProgressListener = gBrowser.mTabProgressListener.toString();
-			},
-
-			loadSetting: function(type) {
-				var self = this;
-				if (!type || type === "new_Download_popups") {
-					this.new_Download_popups = self.getPrefs(0, "new_Download_popups", false);
-				}
-				if (!type || type === "download_dialog_changeName") {
-					this.download_dialog_changeName = self.getPrefs(0, "download_dialog_changeName", false);
-				}
-				if (!type || type === "download_dialog_changeName_encodingConvert") {
-					this.download_dialog_changeName_encodingConvert = self.getPrefs(0, "download_dialog_changeName_encodingConvert", false);
-				}
-				if (!type || type === "download_dialog_changeName_locking") {
-					this.download_dialog_changeName_locking = self.getPrefs(0, "download_dialog_changeName_locking", false);
-				}
-				if (!type || type === "download_dialog_doubleclickanyW") {
-					this.download_dialog_doubleclickanyW = self.getPrefs(0, "download_dialog_doubleclickanyW", false);
-				}
-				if (!type || type === "download_dialog_saveTo_suffix") {
-					this.download_dialog_saveTo_suffix = self.getPrefs(1, "download_dialog_saveTo_suffix", 0);
-				}
-				if (!type || type === "save_And_Open_RorL") {
-					this.save_And_Open_RorL = self.getPrefs(1, "save_And_Open_RorL", 0);
-				}
-				if (!type || type === "download_dialog_saveas_dir") {
-				           // this.PrefStrTrim("download_dialog_saveas_dir", "['C:\\Users\\Administrator\\Downloads\\压缩', '压缩'], ['F:\\软件相关', '软件'], ['C:\\Users\\Administrator\\Downloads\\文档', '文档'], ['C:\\Users\\Administrator\\Downloads\\音乐', '歌曲'],['C:\\Users\\Administrator\\Downloads\\其他', '其他']");
-				}
-
-				switch (location.href) {
-					case "chrome://browser/content/browser.xul":
-						setTimeout(function() {
-							if (!type || type === "new_Download") {
-								new_Download(self.getPrefs(0, "new_Download", false));
-							}
-							if (!type || type === "downloadsPanel_removeFile") {
-								downloadsPanel_removeFile(self.getPrefs(0, "downloadsPanel_removeFile", false))
-							}
-							if (!type || type === "downloadSound_Play") {
-								downloadSound_Play(self.getPrefs(0, "downloadSound_Play", false));
-							}
-							if (!type || type === "downloadFileSize") {
-								downloadFileSize(self.getPrefs(0, "downloadFileSize", false));
-							}
-							if (!type || type === "autoClose_blankTab") {
-								autoClose_blankTab(self.getPrefs(0, "downloadFileSize", false));
-							}
-							if (!type || type === "save_And_Open") {
-								saveAndOpen_on_main(self.getPrefs(0, "save_And_Open", false));
-							}
-							if (!type || type === "download_dialog_changeName") {
-								download_dialog_changeName_on_main(self.getPrefs(0, "download_dialog_changeName", false));
-							}
-						}, 200);
-						break;
-					case "chrome://mozapps/content/downloads/unknownContentType.xul":
-						setTimeout(function() {
-							if (!type || type === "save_And_Open") {
-								save_And_Open(self.getPrefs(0, "save_And_Open", false));
-							}
-							if (!type || type === "download_dialog_changeName") {
-								download_dialog_changeName(self.getPrefs(0, "download_dialog_changeName", false));
-							}
-							if (!type || type === "download_dialog_saveas") {
-								download_dialog_saveas(self.getPrefs(0, "download_dialog_saveas", false));
-							}
-							if (!type || type === "download_dialog_saveTo") {
-								download_dialog_saveTo(self.getPrefs(0, "download_dialog_saveTo", false));
-							}
-							if (!type || type === "download_dialog_showCompleteURL") {
-								download_dialog_showCompleteURL(self.getPrefs(0, "download_dialog_showCompleteURL", false));
-							}
-							if (!type || type === "download_dialog_doubleclicksaveL") {
-								download_dialog_doubleclicksaveL(self.getPrefs(0, "download_dialog_doubleclicksaveL", false));
-							}
-							window.sizeToContent(); // 下载弹出窗口大小自适应(确保在添加的按钮之后加载)
-						}, 500);
-						break;
-					case "chrome://browser/content/places/places.xul":
-						setTimeout(function() {
-							if (!type || type === "new_Download") {
-								new_Download(self.getPrefs(0, "new_Download", false));
-							}
-							if (!type || type === "downloadsPanel_removeFile") {
-								downloadsPanel_removeFile(self.getPrefs(0, "downloadsPanel_removeFile", false));
-							}
-
-						}, 200);
+		PrefsObs: function(subject, topic, data) {
+			if (topic == 'nsPref:changed') {
+				switch (data) {
+					case 'new_Download':
+					case 'new_Download_popups':
+					case 'downloadsPanel_removeFile':
+					case 'downloadSound_Play':
+					case 'downloadFileSize':
+					case 'autoClose_blankTab':
+					case 'save_And_Open':
+					case 'save_And_Open_RorL':
+					case 'download_dialog_changeName':
+					case 'download_dialog_changeName_encodingConvert':
+					case 'download_dialog_changeName_locking':
+					case 'download_dialog_saveas':
+					case "download_dialog_saveas_dir":
+					case 'download_dialog_saveTo':
+					case 'download_dialog_saveTo_suffix':
+					case 'download_dialog_showCompleteURL':
+					case 'download_dialog_doubleclicksaveL':
+					case 'download_dialog_doubleclickanyW':
+						downloadPlus.loadSetting(data);
 						break;
 				}
-			},
+			}
+		},
+
+		loadDefault: function() {
+			this.Default_DownloadUtils_convertByteUnits = DownloadUtils.convertByteUnits;
+			this.Default_gBrowser_mTabProgressListener = gBrowser.mTabProgressListener.toString();
+		},
+
+		loadSetting: function(type) {
+			var self = this;
+			if (!type || type === "new_Download_popups") {
+				this.new_Download_popups = self.getPrefs(0, "new_Download_popups", false);
+			}
+			if (!type || type === "download_dialog_changeName") {
+				this.download_dialog_changeName = self.getPrefs(0, "download_dialog_changeName", false);
+			}
+			if (!type || type === "download_dialog_changeName_encodingConvert") {
+				this.download_dialog_changeName_encodingConvert = self.getPrefs(0, "download_dialog_changeName_encodingConvert", false);
+			}
+			if (!type || type === "download_dialog_changeName_locking") {
+				this.download_dialog_changeName_locking = self.getPrefs(0, "download_dialog_changeName_locking", false);
+			}
+			if (!type || type === "download_dialog_doubleclickanyW") {
+				this.download_dialog_doubleclickanyW = self.getPrefs(0, "download_dialog_doubleclickanyW", false);
+			}
+			if (!type || type === "download_dialog_saveTo_suffix") {
+				this.download_dialog_saveTo_suffix = self.getPrefs(1, "download_dialog_saveTo_suffix", 0);
+			}
+			if (!type || type === "save_And_Open_RorL") {
+				this.save_And_Open_RorL = self.getPrefs(1, "save_And_Open_RorL", 0);
+			}
+			if (!type || type === "download_dialog_saveas_dir") {
+				// this.PrefStrTrim("download_dialog_saveas_dir", "['C:\\Users\\Administrator\\Downloads\\压缩', '压缩'], ['F:\\软件相关', '软件'], ['C:\\Users\\Administrator\\Downloads\\文档', '文档'], ['C:\\Users\\Administrator\\Downloads\\音乐', '歌曲'],['C:\\Users\\Administrator\\Downloads\\其他', '其他']");
+			}
+
+			switch (location.href) {
+				case "chrome://browser/content/browser.xul":
+					setTimeout(function() {
+						if (!type || type === "new_Download") {
+							new_Download(self.getPrefs(0, "new_Download", false));
+						}
+						if (!type || type === "downloadsPanel_removeFile") {
+							downloadsPanel_removeFile(self.getPrefs(0, "downloadsPanel_removeFile", false))
+						}
+						if (!type || type === "downloadSound_Play") {
+							downloadSound_Play(self.getPrefs(0, "downloadSound_Play", false));
+						}
+						if (!type || type === "downloadFileSize") {
+							downloadFileSize(self.getPrefs(0, "downloadFileSize", false));
+						}
+						if (!type || type === "autoClose_blankTab") {
+							autoClose_blankTab(self.getPrefs(0, "downloadFileSize", false));
+						}
+						if (!type || type === "save_And_Open") {
+							saveAndOpen_on_main(self.getPrefs(0, "save_And_Open", false));
+						}
+						if (!type || type === "download_dialog_changeName") {
+							download_dialog_changeName_on_main(self.getPrefs(0, "download_dialog_changeName", false));
+						}
+					}, 200);
+					break;
+				case "chrome://mozapps/content/downloads/unknownContentType.xul":
+					setTimeout(function() {
+						if (!type || type === "save_And_Open") {
+							save_And_Open(self.getPrefs(0, "save_And_Open", false));
+						}
+						if (!type || type === "download_dialog_changeName") {
+							download_dialog_changeName(self.getPrefs(0, "download_dialog_changeName", false));
+						}
+						if (!type || type === "download_dialog_saveas") {
+							download_dialog_saveas(self.getPrefs(0, "download_dialog_saveas", false));
+						}
+						if (!type || type === "download_dialog_saveTo") {
+							download_dialog_saveTo(self.getPrefs(0, "download_dialog_saveTo", false));
+						}
+						if (!type || type === "download_dialog_showCompleteURL") {
+							download_dialog_showCompleteURL(self.getPrefs(0, "download_dialog_showCompleteURL", false));
+						}
+						if (!type || type === "download_dialog_doubleclicksaveL") {
+							download_dialog_doubleclicksaveL(self.getPrefs(0, "download_dialog_doubleclicksaveL", false));
+						}
+						window.sizeToContent(); // 下载弹出窗口大小自适应(确保在添加的按钮之后加载)
+					}, 500);
+					break;
+				case "chrome://browser/content/places/places.xul":
+					setTimeout(function() {
+						if (!type || type === "new_Download") {
+							new_Download(self.getPrefs(0, "new_Download", false));
+						}
+						if (!type || type === "downloadsPanel_removeFile") {
+							downloadsPanel_removeFile(self.getPrefs(0, "downloadsPanel_removeFile", false));
+						}
+
+					}, 200);
+					break;
+			}
+		},
 
 		getPrefs: function(type, name, val) {
 			switch (type) {
@@ -186,17 +203,17 @@
 			}
 		},
 
-			openPref: function() {
-				if (this.Window)
-					this.Window.focus();
-				else {
-					var option = this.option();
-					window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + option, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
-				}
-			},
+		openPref: function() {
+			if (this.Window)
+				this.Window.focus();
+			else {
+				var option = this.option();
+				window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + option, '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
+			}
+		},
 
-			option: function() {
-				xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
+		option: function() {
+			xul = '<?xml version="1.0"?><?xml-stylesheet href="chrome://global/skin/" type="text/css"?>\
 					<prefwindow xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"\
 					id="downloadPlus_Settings"\
 					ignorekeys="true"\
@@ -327,232 +344,231 @@
 					</prefpane>\
 					</prefwindow>\
           			';
-				return encodeURIComponent(xul);
+			return encodeURIComponent(xul);
+		},
+	};
+
+	// 下载完成提示音
+	function downloadSound_Play(enable) {
+		if (!enable) {
+			downloadPlaySound && downloadPlaySound.uninit();
+			return;
+		}
+		var downloadPlaySound = {
+
+			DL_START: null,
+			DL_DONE: "file:///C:/WINDOWS/Media/chimes.wav",
+			DL_CANCEL: null,
+			DL_FAILED: null,
+
+			get _enable() {
+				var _enable = downloadPlus.getPrefs(0, "downloadSound_Play", false);
+				return _enable;
 			},
-		};
 
-		// 下载完成提示音
-		function downloadSound_Play(enable) {
-			if (!enable) {
-				downloadPlaySound && downloadPlaySound.uninit();
-				return;
-			}
-			var downloadPlaySound = {
-
-				DL_START: null,
-				DL_DONE: "file:///C:/WINDOWS/Media/chimes.wav",
-				DL_CANCEL: null,
-				DL_FAILED: null,
-
-				get _enable() {
-					var _enable = downloadPlus.getPrefs("downloadSound_Play");
-					return _enable;
-				},
-
-				_list: null,
-				init: function sampleDownload_init() {
-					XPCOMUtils.defineLazyModuleGetter(window, "Downloads",
-						"resource://gre/modules/Downloads.jsm");
+			_list: null,
+			init: function sampleDownload_init() {
+				XPCOMUtils.defineLazyModuleGetter(window, "Downloads",
+					"resource://gre/modules/Downloads.jsm");
 
 
-					window.addEventListener("unload", this, false);
+				window.addEventListener("unload", this, false);
 
-					//**** 监视下载
-					if (!this._list) {
-						Downloads.getList(Downloads.ALL).then(list => {
-							this._list = list;
-							return this._list.addView(this);
-						}).then(null, Cu.reportError);
-					}
-				},
+				//**** 监视下载
+				if (!this._list) {
+					Downloads.getList(Downloads.ALL).then(list => {
+						this._list = list;
+						return this._list.addView(this);
+					}).then(null, Cu.reportError);
+				}
+			},
 
-				uninit: function() {
-					window.removeEventListener("unload", this, false);
-					if (this._list) {
-						this._list.removeView(this);
-					}
-				},
+			uninit: function() {
+				window.removeEventListener("unload", this, false);
+				if (this._list) {
+					this._list.removeView(this);
+				}
+			},
 
-				onDownloadAdded: function(aDownload) {
-					//**** 开始下载
-					if (this.DL_START && this._enable);
-					this.playSoundFile(this.DL_START);
-				},
+			onDownloadAdded: function(aDownload) {
+				//**** 开始下载
+				if (this.DL_START && this._enable);
+				this.playSoundFile(this.DL_START);
+			},
 
-				onDownloadChanged: function(aDownload) {
-					//**** 取消下载
-					if (aDownload.canceled && this.DL_CANCEL && this._enable)
-						this.playSoundFile(this.DL_CANCEL)
-						//**** 下载失败
-					if (aDownload.error && this.DL_FAILED && this._enable)
-						this.playSoundFile(this.DL_FAILED)
-						//**** 完成下载
-					if (aDownload.succeeded && this.DL_DONE && this._enable)
-						this.playSoundFile(this.DL_DONE)
-				},
+			onDownloadChanged: function(aDownload) {
+				//**** 取消下载
+				if (aDownload.canceled && this.DL_CANCEL && this._enable)
+					this.playSoundFile(this.DL_CANCEL)
+					//**** 下载失败
+				if (aDownload.error && this.DL_FAILED && this._enable)
+					this.playSoundFile(this.DL_FAILED)
+					//**** 完成下载
+				if (aDownload.succeeded && this.DL_DONE && this._enable)
+					this.playSoundFile(this.DL_DONE)
+			},
 
-				playSoundFile: function(aFilePath) {
-					if (!aFilePath)
-						return;
-					var ios = Components.classes["@mozilla.org/network/io-service;1"]
-						.createInstance(Components.interfaces["nsIIOService"]);
-					try {
-						var uri = ios.newURI(aFilePath, "UTF-8", null);
-					} catch (e) {
-						return;
-					}
-					var file = uri.QueryInterface(Components.interfaces.nsIFileURL).file;
-					if (!file.exists())
-						return;
+			playSoundFile: function(aFilePath) {
+				if (!aFilePath)
+					return;
+				var ios = Components.classes["@mozilla.org/network/io-service;1"]
+					.createInstance(Components.interfaces["nsIIOService"]);
+				try {
+					var uri = ios.newURI(aFilePath, "UTF-8", null);
+				} catch (e) {
+					return;
+				}
+				var file = uri.QueryInterface(Components.interfaces.nsIFileURL).file;
+				if (!file.exists())
+					return;
 
-					this.play(uri);
-				},
+				this.play(uri);
+			},
 
-				play: function(aUri) {
-					var sound = Components.classes["@mozilla.org/sound;1"]
-						.createInstance(Components.interfaces["nsISound"]);
-					sound.play(aUri);
-				},
+			play: function(aUri) {
+				var sound = Components.classes["@mozilla.org/sound;1"]
+					.createInstance(Components.interfaces["nsISound"]);
+				sound.play(aUri);
+			},
 
-				handleEvent: function(event) {
-					switch (event.type) {
-						case "unload":
-							this.uninit();
-							break;
-					}
+			handleEvent: function(event) {
+				switch (event.type) {
+					case "unload":
+						this.uninit();
+						break;
 				}
 			}
-
-			downloadPlaySound.init();
 		}
 
-		//新建下载
-		function new_Download(enable) {
-				if (!enable) return;
-				var createDownloadDialog = function() {
-					if (downloadPlus.new_Download_popups)
-						window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPD94bWwtc3R5bGVzaGVldCBocmVmPSJjaHJvbWU6Ly9nbG9iYWwvc2tpbi8iIHR5cGU9InRleHQvY3NzIj8+Cjx3aW5kb3cgeG1sbnM9Imh0dHA6Ly93d3cubW96aWxsYS5vcmcva2V5bWFzdGVyL2dhdGVrZWVwZXIvdGhlcmUuaXMub25seS54dWwiIHdpZHRoPSI1MDAiIGhlaWdodD0iMzAwIiB0aXRsZT0i5paw5bu65LiL6L295Lu75YqhIj4KCTxoYm94IGFsaWduPSJjZW50ZXIiIHRvb2x0aXB0ZXh0PSJodHRwOi8vd3d3LmV4YW1wbGUuY29tL1sxLTEwMC0zXSAgKFvlvIDlp4st57uT5p2fLeS9jeaVsF0pIj4KCQk8bGFiZWwgdmFsdWU9IuaJuemHj+S7u+WKoSI+PC9sYWJlbD4KCQk8dGV4dGJveCBmbGV4PSIxIi8+Cgk8L2hib3g+Cgk8dGV4dGJveCBpZD0idXJscyIgbXVsdGlsaW5lPSJ0cnVlIiBmbGV4PSIxIi8+Cgk8aGJveCBkaXI9InJldmVyc2UiPgoJCTxidXR0b24gbGFiZWw9IuW8gOWni+S4i+i9vSIvPgoJPC9oYm94PgoJPHNjcmlwdD4KCQk8IVtDREFUQVsKCQlmdW5jdGlvbiBQYXJzZVVSTHMoKSB7CgkJCXZhciBiYXRjaHVybCA9IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS52YWx1ZTsKCQkJaWYgKC9cW1xkKy1cZCsoLVxkKyk/XF0vLnRlc3QoYmF0Y2h1cmwpKSB7CgkJCQlmb3IgKHZhciBtYXRjaCA9IGJhdGNodXJsLm1hdGNoKC9cWyhcZCspLShcZCspLT8oXGQrKT9cXS8pLCBpID0gbWF0Y2hbMV0sIGogPSBtYXRjaFsyXSwgayA9IG1hdGNoWzNdLCB1cmxzID0gW107IGkgPD0gajsgaSsrKSB7CgkJCQkJdXJscy5wdXNoKGJhdGNodXJsLnJlcGxhY2UoL1xbXGQrLVxkKygtXGQrKT9cXS8sIChpICsgIiIpLmxlbmd0aCA8IGsgPyAoZXZhbCgiMTBlIiArIChrIC0gKGkgKyAiIikubGVuZ3RoKSkgKyAiIikuc2xpY2UoMikgKyBpIDogaSkpOwoJCQkJfQoJCQkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigiI3VybHMiKS52YWx1ZSA9IHVybHMuam9pbigiXG4iKTsKCQkJfSBlbHNlIHsKCQkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoIiN1cmxzIikudmFsdWUgPSBiYXRjaHVybDsKCQkJfQoJCX0KCQl2YXIgb3duZXIgPSB3aW5kb3cub3BlbmVyOwoJCXdoaWxlKG93bmVyLm9wZW5lciAmJiBvd25lci5sb2NhdGlvbiAhPSAiY2hyb21lOi8vYnJvd3Nlci9jb250ZW50L2Jyb3dzZXIueHVsIil7CgkJCW93bmVyID0gb3duZXIub3BlbmVyOwoJCX0KdmFyIG1haW53aW4gPSBDb21wb25lbnRzLmNsYXNzZXNbIkBtb3ppbGxhLm9yZy9hcHBzaGVsbC93aW5kb3ctbWVkaWF0b3I7MSJdLmdldFNlcnZpY2UoQ29tcG9uZW50cy5pbnRlcmZhY2VzLm5zSVdpbmRvd01lZGlhdG9yKS5nZXRNb3N0UmVjZW50V2luZG93KCJuYXZpZ2F0b3I6YnJvd3NlciIpOwkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS5hZGRFdmVudExpc3RlbmVyKCJrZXl1cCIsIFBhcnNlVVJMcywgZmFsc2UpOwoJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoImJ1dHRvbiIpLmFkZEV2ZW50TGlzdGVuZXIoImNvbW1hbmQiLCBmdW5jdGlvbiAoKSB7CQlkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCIjdXJscyIpLnZhbHVlLnNwbGl0KCJcbiIpLmZvckVhY2goZnVuY3Rpb24gKHVybCkgewoJCQkJb3duZXIuc2F2ZVVSTCh1cmwgLCBudWxsLCBudWxsLCBudWxsLCBudWxsLCBudWxsLCBtYWlud2luLmRvY3VtZW50KTsKCQkJfSk7CgkJCWNsb3NlKCkKCQl9LCBmYWxzZSk7CgkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigidGV4dGJveCIpLnZhbHVlID0gb3duZXIucmVhZEZyb21DbGlwYm9hcmQoKTsKCQlQYXJzZVVSTHMoKTsKCQldXT4KCTwvc2NyaXB0Pgo8L3dpbmRvdz4=", "name", "top=" + (window.screenY + window.innerHeight / 4 - 50) + ",left=" + (window.screenX + window.innerWidth / 2 - 250));
-					else
-						window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPD94bWwtc3R5bGVzaGVldCBocmVmPSJjaHJvbWU6Ly9nbG9iYWwvc2tpbi8iIHR5cGU9InRleHQvY3NzIj8+Cjx3aW5kb3cgeG1sbnM9Imh0dHA6Ly93d3cubW96aWxsYS5vcmcva2V5bWFzdGVyL2dhdGVrZWVwZXIvdGhlcmUuaXMub25seS54dWwiIHdpZHRoPSI1MDAiIGhlaWdodD0iMzAwIiB0aXRsZT0i5paw5bu65LiL6L295Lu75YqhIj4KCTxoYm94IGFsaWduPSJjZW50ZXIiIHRvb2x0aXB0ZXh0PSJodHRwOi8vd3d3LmV4YW1wbGUuY29tL1sxLTEwMC0zXSAgKFvlvIDlp4st57uT5p2fLeS9jeaVsF0pIj4KCQk8bGFiZWwgdmFsdWU9IuaJuemHj+S7u+WKoSI+PC9sYWJlbD4KCQk8dGV4dGJveCBmbGV4PSIxIi8+Cgk8L2hib3g+Cgk8dGV4dGJveCBpZD0idXJscyIgbXVsdGlsaW5lPSJ0cnVlIiBmbGV4PSIxIi8+Cgk8aGJveCBkaXI9InJldmVyc2UiPgoJCTxidXR0b24gbGFiZWw9IuW8gOWni+S4i+i9vSIvPgoJPC9oYm94PgoJPHNjcmlwdD4KCQk8IVtDREFUQVsKCQlmdW5jdGlvbiBQYXJzZVVSTHMoKSB7CgkJCXZhciBiYXRjaHVybCA9IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS52YWx1ZTsKCQkJaWYgKC9cW1xkKy1cZCsoLVxkKyk/XF0vLnRlc3QoYmF0Y2h1cmwpKSB7CgkJCQlmb3IgKHZhciBtYXRjaCA9IGJhdGNodXJsLm1hdGNoKC9cWyhcZCspLShcZCspLT8oXGQrKT9cXS8pLCBpID0gbWF0Y2hbMV0sIGogPSBtYXRjaFsyXSwgayA9IG1hdGNoWzNdLCB1cmxzID0gW107IGkgPD0gajsgaSsrKSB7CgkJCQkJdXJscy5wdXNoKGJhdGNodXJsLnJlcGxhY2UoL1xbXGQrLVxkKygtXGQrKT9cXS8sIChpICsgIiIpLmxlbmd0aCA8IGsgPyAoZXZhbCgiMTBlIiArIChrIC0gKGkgKyAiIikubGVuZ3RoKSkgKyAiIikuc2xpY2UoMikgKyBpIDogaSkpOwoJCQkJfQoJCQkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigiI3VybHMiKS52YWx1ZSA9IHVybHMuam9pbigiXG4iKTsKCQkJfSBlbHNlIHsKCQkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoIiN1cmxzIikudmFsdWUgPSBiYXRjaHVybDsKCQkJfQoJCX0KCQl2YXIgb3duZXIgPSB3aW5kb3cub3BlbmVyOwoJCXdoaWxlKG93bmVyLm9wZW5lciAmJiBvd25lci5sb2NhdGlvbiAhPSAiY2hyb21lOi8vYnJvd3Nlci9jb250ZW50L2Jyb3dzZXIueHVsIil7CgkJCW93bmVyID0gb3duZXIub3BlbmVyOwoJCX0KdmFyIG1haW53aW4gPSBDb21wb25lbnRzLmNsYXNzZXNbIkBtb3ppbGxhLm9yZy9hcHBzaGVsbC93aW5kb3ctbWVkaWF0b3I7MSJdLmdldFNlcnZpY2UoQ29tcG9uZW50cy5pbnRlcmZhY2VzLm5zSVdpbmRvd01lZGlhdG9yKS5nZXRNb3N0UmVjZW50V2luZG93KCJuYXZpZ2F0b3I6YnJvd3NlciIpOwkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS5hZGRFdmVudExpc3RlbmVyKCJrZXl1cCIsIFBhcnNlVVJMcywgZmFsc2UpOwoJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoImJ1dHRvbiIpLmFkZEV2ZW50TGlzdGVuZXIoImNvbW1hbmQiLCBmdW5jdGlvbiAoKSB7CQlkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCIjdXJscyIpLnZhbHVlLnNwbGl0KCJcbiIpLmZvckVhY2goZnVuY3Rpb24gKHVybCkgewoJCQkJb3duZXIuc2F2ZVVSTCh1cmwgLCBudWxsLCBudWxsLCBudWxsLCB0cnVlLCBudWxsLCBtYWlud2luLmRvY3VtZW50KTsKCQkJfSk7CgkJCWNsb3NlKCkKCQl9LCBmYWxzZSk7CgkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigidGV4dGJveCIpLnZhbHVlID0gb3duZXIucmVhZEZyb21DbGlwYm9hcmQoKTsKCQlQYXJzZVVSTHMoKTsKCQldXT4KCTwvc2NyaXB0Pgo8L3dpbmRvdz4=", "name", "top=" + (window.screenY + window.innerHeight / 4 - 50) + ",left=" + (window.screenX + window.innerWidth / 2 - 250));
-				}
+		downloadPlaySound.init();
+	}
 
-				location == "chrome://browser/content/browser.xul" && (function() {
-					document.getElementById('downloads-button').parentNode.addEventListener('click', function(e) {
-						if (e.target.id == "downloads-button" || e.target.id == "downloads-indicator") {
-							if (e.button == 2) {
-								if (!(e.ctrlKey || e.shiftKey || e.altKey || e.metaKey)) {
-									createDownloadDialog();
-									e.stopPropagation();
-									e.preventDefault();
-								}
-							}
-						}
-					}, false);
-				})();
-
-				location == "chrome://browser/content/places/places.xul" && (function() {
-					var button = document.querySelector("#placesToolbar").insertBefore(document.createElement("toolbarbutton"), document.querySelector("#clearDownloadsButton"));
-					button.id = "createNewDownload";
-					button.label = "新建下载";
-					button.style.paddingRight = "9px";
-					button.addEventListener("command", createDownloadDialog, false);
-					window.addEventListener("mouseover", function(e) {
-						button.style.display = (document.getElementById("searchFilter").attributes.getNamedItem("collection").value == "downloads") ? "-moz-box" : "none";
-					}, false);
-				})();
-			}
-		// 从硬盘中删除
-		function downloadsPanel_removeFile(enable) {
+	//新建下载
+	function new_Download(enable) {
 			if (!enable) return;
-			var removeDownloadfile = {
-					removeStatus: function() {
-						var RMBtn = document.querySelector("#removeDownload"),
-							listbox = document.querySelector("#downloadsListBox") || document.querySelector("#downloadsRichListBox"),
-							state = listbox.selectedItems[0].getAttribute('state');
-						RMBtn.setAttribute("disabled", "true");
-						if (state != "0" && state != "4" && state != "5")
-							RMBtn.removeAttribute("disabled");
-					},
+			var createDownloadDialog = function() {
+				if (downloadPlus.new_Download_popups)
+					window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPD94bWwtc3R5bGVzaGVldCBocmVmPSJjaHJvbWU6Ly9nbG9iYWwvc2tpbi8iIHR5cGU9InRleHQvY3NzIj8+Cjx3aW5kb3cgeG1sbnM9Imh0dHA6Ly93d3cubW96aWxsYS5vcmcva2V5bWFzdGVyL2dhdGVrZWVwZXIvdGhlcmUuaXMub25seS54dWwiIHdpZHRoPSI1MDAiIGhlaWdodD0iMzAwIiB0aXRsZT0i5paw5bu65LiL6L295Lu75YqhIj4KCTxoYm94IGFsaWduPSJjZW50ZXIiIHRvb2x0aXB0ZXh0PSJodHRwOi8vd3d3LmV4YW1wbGUuY29tL1sxLTEwMC0zXSAgKFvlvIDlp4st57uT5p2fLeS9jeaVsF0pIj4KCQk8bGFiZWwgdmFsdWU9IuaJuemHj+S7u+WKoSI+PC9sYWJlbD4KCQk8dGV4dGJveCBmbGV4PSIxIi8+Cgk8L2hib3g+Cgk8dGV4dGJveCBpZD0idXJscyIgbXVsdGlsaW5lPSJ0cnVlIiBmbGV4PSIxIi8+Cgk8aGJveCBkaXI9InJldmVyc2UiPgoJCTxidXR0b24gbGFiZWw9IuW8gOWni+S4i+i9vSIvPgoJPC9oYm94PgoJPHNjcmlwdD4KCQk8IVtDREFUQVsKCQlmdW5jdGlvbiBQYXJzZVVSTHMoKSB7CgkJCXZhciBiYXRjaHVybCA9IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS52YWx1ZTsKCQkJaWYgKC9cW1xkKy1cZCsoLVxkKyk/XF0vLnRlc3QoYmF0Y2h1cmwpKSB7CgkJCQlmb3IgKHZhciBtYXRjaCA9IGJhdGNodXJsLm1hdGNoKC9cWyhcZCspLShcZCspLT8oXGQrKT9cXS8pLCBpID0gbWF0Y2hbMV0sIGogPSBtYXRjaFsyXSwgayA9IG1hdGNoWzNdLCB1cmxzID0gW107IGkgPD0gajsgaSsrKSB7CgkJCQkJdXJscy5wdXNoKGJhdGNodXJsLnJlcGxhY2UoL1xbXGQrLVxkKygtXGQrKT9cXS8sIChpICsgIiIpLmxlbmd0aCA8IGsgPyAoZXZhbCgiMTBlIiArIChrIC0gKGkgKyAiIikubGVuZ3RoKSkgKyAiIikuc2xpY2UoMikgKyBpIDogaSkpOwoJCQkJfQoJCQkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigiI3VybHMiKS52YWx1ZSA9IHVybHMuam9pbigiXG4iKTsKCQkJfSBlbHNlIHsKCQkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoIiN1cmxzIikudmFsdWUgPSBiYXRjaHVybDsKCQkJfQoJCX0KCQl2YXIgb3duZXIgPSB3aW5kb3cub3BlbmVyOwoJCXdoaWxlKG93bmVyLm9wZW5lciAmJiBvd25lci5sb2NhdGlvbiAhPSAiY2hyb21lOi8vYnJvd3Nlci9jb250ZW50L2Jyb3dzZXIueHVsIil7CgkJCW93bmVyID0gb3duZXIub3BlbmVyOwoJCX0KdmFyIG1haW53aW4gPSBDb21wb25lbnRzLmNsYXNzZXNbIkBtb3ppbGxhLm9yZy9hcHBzaGVsbC93aW5kb3ctbWVkaWF0b3I7MSJdLmdldFNlcnZpY2UoQ29tcG9uZW50cy5pbnRlcmZhY2VzLm5zSVdpbmRvd01lZGlhdG9yKS5nZXRNb3N0UmVjZW50V2luZG93KCJuYXZpZ2F0b3I6YnJvd3NlciIpOwkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS5hZGRFdmVudExpc3RlbmVyKCJrZXl1cCIsIFBhcnNlVVJMcywgZmFsc2UpOwoJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoImJ1dHRvbiIpLmFkZEV2ZW50TGlzdGVuZXIoImNvbW1hbmQiLCBmdW5jdGlvbiAoKSB7CQlkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCIjdXJscyIpLnZhbHVlLnNwbGl0KCJcbiIpLmZvckVhY2goZnVuY3Rpb24gKHVybCkgewoJCQkJb3duZXIuc2F2ZVVSTCh1cmwgLCBudWxsLCBudWxsLCBudWxsLCBudWxsLCBudWxsLCBtYWlud2luLmRvY3VtZW50KTsKCQkJfSk7CgkJCWNsb3NlKCkKCQl9LCBmYWxzZSk7CgkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigidGV4dGJveCIpLnZhbHVlID0gb3duZXIucmVhZEZyb21DbGlwYm9hcmQoKTsKCQlQYXJzZVVSTHMoKTsKCQldXT4KCTwvc2NyaXB0Pgo8L3dpbmRvdz4=", "name", "top=" + (window.screenY + window.innerHeight / 4 - 50) + ",left=" + (window.screenX + window.innerWidth / 2 - 250));
+				else
+					window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPD94bWwtc3R5bGVzaGVldCBocmVmPSJjaHJvbWU6Ly9nbG9iYWwvc2tpbi8iIHR5cGU9InRleHQvY3NzIj8+Cjx3aW5kb3cgeG1sbnM9Imh0dHA6Ly93d3cubW96aWxsYS5vcmcva2V5bWFzdGVyL2dhdGVrZWVwZXIvdGhlcmUuaXMub25seS54dWwiIHdpZHRoPSI1MDAiIGhlaWdodD0iMzAwIiB0aXRsZT0i5paw5bu65LiL6L295Lu75YqhIj4KCTxoYm94IGFsaWduPSJjZW50ZXIiIHRvb2x0aXB0ZXh0PSJodHRwOi8vd3d3LmV4YW1wbGUuY29tL1sxLTEwMC0zXSAgKFvlvIDlp4st57uT5p2fLeS9jeaVsF0pIj4KCQk8bGFiZWwgdmFsdWU9IuaJuemHj+S7u+WKoSI+PC9sYWJlbD4KCQk8dGV4dGJveCBmbGV4PSIxIi8+Cgk8L2hib3g+Cgk8dGV4dGJveCBpZD0idXJscyIgbXVsdGlsaW5lPSJ0cnVlIiBmbGV4PSIxIi8+Cgk8aGJveCBkaXI9InJldmVyc2UiPgoJCTxidXR0b24gbGFiZWw9IuW8gOWni+S4i+i9vSIvPgoJPC9oYm94PgoJPHNjcmlwdD4KCQk8IVtDREFUQVsKCQlmdW5jdGlvbiBQYXJzZVVSTHMoKSB7CgkJCXZhciBiYXRjaHVybCA9IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS52YWx1ZTsKCQkJaWYgKC9cW1xkKy1cZCsoLVxkKyk/XF0vLnRlc3QoYmF0Y2h1cmwpKSB7CgkJCQlmb3IgKHZhciBtYXRjaCA9IGJhdGNodXJsLm1hdGNoKC9cWyhcZCspLShcZCspLT8oXGQrKT9cXS8pLCBpID0gbWF0Y2hbMV0sIGogPSBtYXRjaFsyXSwgayA9IG1hdGNoWzNdLCB1cmxzID0gW107IGkgPD0gajsgaSsrKSB7CgkJCQkJdXJscy5wdXNoKGJhdGNodXJsLnJlcGxhY2UoL1xbXGQrLVxkKygtXGQrKT9cXS8sIChpICsgIiIpLmxlbmd0aCA8IGsgPyAoZXZhbCgiMTBlIiArIChrIC0gKGkgKyAiIikubGVuZ3RoKSkgKyAiIikuc2xpY2UoMikgKyBpIDogaSkpOwoJCQkJfQoJCQkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigiI3VybHMiKS52YWx1ZSA9IHVybHMuam9pbigiXG4iKTsKCQkJfSBlbHNlIHsKCQkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoIiN1cmxzIikudmFsdWUgPSBiYXRjaHVybDsKCQkJfQoJCX0KCQl2YXIgb3duZXIgPSB3aW5kb3cub3BlbmVyOwoJCXdoaWxlKG93bmVyLm9wZW5lciAmJiBvd25lci5sb2NhdGlvbiAhPSAiY2hyb21lOi8vYnJvd3Nlci9jb250ZW50L2Jyb3dzZXIueHVsIil7CgkJCW93bmVyID0gb3duZXIub3BlbmVyOwoJCX0KdmFyIG1haW53aW4gPSBDb21wb25lbnRzLmNsYXNzZXNbIkBtb3ppbGxhLm9yZy9hcHBzaGVsbC93aW5kb3ctbWVkaWF0b3I7MSJdLmdldFNlcnZpY2UoQ29tcG9uZW50cy5pbnRlcmZhY2VzLm5zSVdpbmRvd01lZGlhdG9yKS5nZXRNb3N0UmVjZW50V2luZG93KCJuYXZpZ2F0b3I6YnJvd3NlciIpOwkJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInRleHRib3giKS5hZGRFdmVudExpc3RlbmVyKCJrZXl1cCIsIFBhcnNlVVJMcywgZmFsc2UpOwoJCWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoImJ1dHRvbiIpLmFkZEV2ZW50TGlzdGVuZXIoImNvbW1hbmQiLCBmdW5jdGlvbiAoKSB7CQlkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCIjdXJscyIpLnZhbHVlLnNwbGl0KCJcbiIpLmZvckVhY2goZnVuY3Rpb24gKHVybCkgewoJCQkJb3duZXIuc2F2ZVVSTCh1cmwgLCBudWxsLCBudWxsLCBudWxsLCB0cnVlLCBudWxsLCBtYWlud2luLmRvY3VtZW50KTsKCQkJfSk7CgkJCWNsb3NlKCkKCQl9LCBmYWxzZSk7CgkJZG9jdW1lbnQucXVlcnlTZWxlY3RvcigidGV4dGJveCIpLnZhbHVlID0gb3duZXIucmVhZEZyb21DbGlwYm9hcmQoKTsKCQlQYXJzZVVSTHMoKTsKCQldXT4KCTwvc2NyaXB0Pgo8L3dpbmRvdz4=", "name", "top=" + (window.screenY + window.innerHeight / 4 - 50) + ",left=" + (window.screenX + window.innerWidth / 2 - 250));
+			}
 
-					removeMenu: function() {
-						try {
-							removeDownloadfile.removeStatus();
-						} catch (e) {};
-						if (document.querySelector("#removeDownload")) return;
-						var menuitem = document.createElement("menuitem"),
-							rlm = document.querySelector('.downloadRemoveFromHistoryMenuItem');
-						menuitem.setAttribute("label", rlm.getAttribute("label").indexOf("History") != -1 ? "Delete File" : "\u4ece\u7535\u8111\u786c\u76d8\u4e2d\u79fb\u9664");
-						menuitem.setAttribute("id", "removeDownload");
-
-						menuitem.onclick = function(e) {
-							if (e.target.disabled) return;
-							var path = "";
-							if (typeof DownloadsViewItemController != "undefined") {
-								try {
-									if (downloadPlus.appVersion < 38) {
-										DownloadsView._dataItems.forEach(function(item) {
-											if (item.downloadGuid == DownloadsView.richListBox.selectedItem.getAttribute("downloadGuid")) {
-												path = item.file;
-												if (item.done == false) path += ".part";
-												if(!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
-												return path;
-											}
-										});
-									}
-								 else if (downloadPlus.appVersion >= 38) {
-									DownloadsView._downloads.forEach(function(item) {
-										var _path = decodeURI(DownloadsView.richListBox.selectedItem.image)
-											.replace(/moz\-icon\:\/\//, "").replace(/\?size\=32$/, "")
-											.replace(/\?size\=32\&state\=normal$/, "").replace(/\//g, "\\\\");
-										if (item.target.path == _path) path = _path;
-										if (DownloadsView.richListBox.selectedItem.getAttribute('state') == "2") path = path + ".part";
-										if(!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
-										return path;
-									});
-								}
-							} catch (e) {
-								path = decodeURI(DownloadsView.richListBox.selectedItem.image)
-									.replace(/moz\-icon\:\/\/file\:\/\/\//, "").replace(/\?size\=32$/, "")
-									.replace(/\?size\=32\&state\=normal$/, "").replace(/\//g, "\\\\");
-								if (DownloadsView.richListBox.selectedItem.getAttribute('state') == "2") path = path + ".part";
+			location == "chrome://browser/content/browser.xul" && (function() {
+				document.getElementById('downloads-button').parentNode.addEventListener('click', function(e) {
+					if (e.target.id == "downloads-button" || e.target.id == "downloads-indicator") {
+						if (e.button == 2) {
+							if (!(e.ctrlKey || e.shiftKey || e.altKey || e.metaKey)) {
+								createDownloadDialog();
+								e.stopPropagation();
+								e.preventDefault();
 							}
-						} else {
-							DownloadsView = document.getElementById("downloadsRichListBox")._placesView;
-							var selectedItems = DownloadsView._richlistbox.selectedItems;
-							if (downloadPlus.appVersion < 38) path = selectedItems[0]._shell._metaData.filePath;
-							else if (downloadPlus.appVersion >= 38) path = selectedItems[0]._shell.download.target.path;
 						}
+					}
+				}, false);
+			})();
 
-						var file = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
-						try {
-							file.initWithPath(path);
-						} catch (e) {
-							var fileUrl = Components.classes['@mozilla.org/network/io-service;1'].getService(Components.interfaces.nsIIOService)
-								.getProtocolHandler('file').QueryInterface(Components.interfaces.nsIFileProtocolHandler)
-								.getFileFromURLSpec(path).path;
-							file.initWithPath(fileUrl);
-						}
-						if (file.exists()) {
-							file.permissions |= 0666;
-							file.remove(0);
-						}
+			location == "chrome://browser/content/places/places.xul" && (function() {
+				var button = document.querySelector("#placesToolbar").insertBefore(document.createElement("toolbarbutton"), document.querySelector("#clearDownloadsButton"));
+				button.id = "createNewDownload";
+				button.label = "新建下载";
+				button.style.paddingRight = "9px";
+				button.addEventListener("command", createDownloadDialog, false);
+				window.addEventListener("mouseover", function(e) {
+					button.style.display = (document.getElementById("searchFilter").attributes.getNamedItem("collection").value == "downloads") ? "-moz-box" : "none";
+				}, false);
+			})();
+		}
+		// 从硬盘中删除
+	function downloadsPanel_removeFile(enable) {
+		if (!enable) return;
+		var removeDownloadfile = {
+			removeStatus: function() {
+				var RMBtn = document.querySelector("#removeDownload"),
+					listbox = document.querySelector("#downloadsListBox") || document.querySelector("#downloadsRichListBox"),
+					state = listbox.selectedItems[0].getAttribute('state');
+				RMBtn.setAttribute("disabled", "true");
+				if (state != "0" && state != "4" && state != "5")
+					RMBtn.removeAttribute("disabled");
+			},
 
-						if (typeof DownloadsViewItemController != "undefined") {
-							if (downloadPlus.appVersion < 38) new DownloadsViewItemController(DownloadsView.richListBox.selectedItem).doCommand("cmd_delete");
-							else if (downloadPlus.appVersion >= 38) DownloadsView.controllerForElement(DownloadsView.richListBox.selectedItem).doCommand("cmd_delete");
-						} else {
-							DownloadsView.doCommand("cmd_delete");
-						}
-					};
-
-					document.querySelector("#downloadsContextMenu").insertBefore(menuitem, rlm.nextSibling);
+			removeMenu: function() {
+				try {
 					removeDownloadfile.removeStatus();
-				},
+				} catch (e) {};
+				if (document.querySelector("#removeDownload")) return;
+				var menuitem = document.createElement("menuitem"),
+					rlm = document.querySelector('.downloadRemoveFromHistoryMenuItem');
+				menuitem.setAttribute("label", rlm.getAttribute("label").indexOf("History") != -1 ? "Delete File" : "\u4ece\u7535\u8111\u786c\u76d8\u4e2d\u79fb\u9664");
+				menuitem.setAttribute("id", "removeDownload");
 
-				Start: function() {
-					document.querySelector("#downloadsContextMenu").addEventListener("popupshowing", this.removeMenu, false);
+				menuitem.onclick = function(e) {
+					if (e.target.disabled) return;
+					var path = "";
+					if (typeof DownloadsViewItemController != "undefined") {
+						try {
+							if (downloadPlus.appVersion < 38) {
+								DownloadsView._dataItems.forEach(function(item) {
+									if (item.downloadGuid == DownloadsView.richListBox.selectedItem.getAttribute("downloadGuid")) {
+										path = item.file;
+										if (item.done == false) path += ".part";
+										if (!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
+										return path;
+									}
+								});
+							} else if (downloadPlus.appVersion >= 38) {
+								DownloadsView._downloads.forEach(function(item) {
+									var _path = decodeURI(DownloadsView.richListBox.selectedItem.image)
+										.replace(/moz\-icon\:\/\//, "").replace(/\?size\=32$/, "")
+										.replace(/\?size\=32\&state\=normal$/, "").replace(/\//g, "\\\\");
+									if (item.target.path == _path) path = _path;
+									if (DownloadsView.richListBox.selectedItem.getAttribute('state') == "2") path = path + ".part";
+									if (!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
+									return path;
+								});
+							}
+						} catch (e) {
+							path = decodeURI(DownloadsView.richListBox.selectedItem.image)
+								.replace(/moz\-icon\:\/\/file\:\/\/\//, "").replace(/\?size\=32$/, "")
+								.replace(/\?size\=32\&state\=normal$/, "").replace(/\//g, "\\\\");
+							if (DownloadsView.richListBox.selectedItem.getAttribute('state') == "2") path = path + ".part";
+						}
+					} else {
+						DownloadsView = document.getElementById("downloadsRichListBox")._placesView;
+						var selectedItems = DownloadsView._richlistbox.selectedItems;
+						if (downloadPlus.appVersion < 38) path = selectedItems[0]._shell._metaData.filePath;
+						else if (downloadPlus.appVersion >= 38) path = selectedItems[0]._shell.download.target.path;
+					}
 
-				}
+					var file = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
+					try {
+						file.initWithPath(path);
+					} catch (e) {
+						var fileUrl = Components.classes['@mozilla.org/network/io-service;1'].getService(Components.interfaces.nsIIOService)
+							.getProtocolHandler('file').QueryInterface(Components.interfaces.nsIFileProtocolHandler)
+							.getFileFromURLSpec(path).path;
+						file.initWithPath(fileUrl);
+					}
+					if (file.exists()) {
+						file.permissions |= 0666;
+						file.remove(0);
+					}
+
+					if (typeof DownloadsViewItemController != "undefined") {
+						if (downloadPlus.appVersion < 38) new DownloadsViewItemController(DownloadsView.richListBox.selectedItem).doCommand("cmd_delete");
+						else if (downloadPlus.appVersion >= 38) DownloadsView.controllerForElement(DownloadsView.richListBox.selectedItem).doCommand("cmd_delete");
+					} else {
+						DownloadsView.doCommand("cmd_delete");
+					}
+				};
+
+				document.querySelector("#downloadsContextMenu").insertBefore(menuitem, rlm.nextSibling);
+				removeDownloadfile.removeStatus();
+			},
+
+			Start: function() {
+				document.querySelector("#downloadsContextMenu").addEventListener("popupshowing", this.removeMenu, false);
+
+			}
 		}
 		if (location != "chrome://browser/content/places/places.xul") {
 			try {
@@ -602,14 +618,14 @@
 
 	// 保存并打开
 	function save_And_Open(enable) {
-		if (!enable) return;
-		var saveAndOpen = document.getAnonymousElementByAttribute(document.querySelector("*"), "dlgtype", "extra2");
-		saveAndOpen.parentNode.insertBefore(saveAndOpen, document.documentElement.getButton("accept").nextSibling);
-		saveAndOpen.setAttribute("hidden", "false");
-		saveAndOpen.setAttribute("label", "\u4FDD\u5B58\u5E76\u6253\u5F00");
-		saveAndOpen.setAttribute("oncommand", 'Components.classes["@mozilla.org/browser/browserglue;1"].getService(Components.interfaces.nsIBrowserGlue).getMostRecentBrowserWindow().saveAndOpen.urls.push(dialog.mLauncher.source.asciiSpec);document.querySelector("#save").click();document.documentElement.getButton("accept").disabled=0;document.documentElement.getButton("accept").click()')
-	}
-	//作用于 main 窗口
+			if (!enable) return;
+			var saveAndOpen = document.getAnonymousElementByAttribute(document.querySelector("*"), "dlgtype", "extra2");
+			saveAndOpen.parentNode.insertBefore(saveAndOpen, document.documentElement.getButton("accept").nextSibling);
+			saveAndOpen.setAttribute("hidden", "false");
+			saveAndOpen.setAttribute("label", "\u4FDD\u5B58\u5E76\u6253\u5F00");
+			saveAndOpen.setAttribute("oncommand", 'Components.classes["@mozilla.org/browser/browserglue;1"].getService(Components.interfaces.nsIBrowserGlue).getMostRecentBrowserWindow().saveAndOpen.urls.push(dialog.mLauncher.source.asciiSpec);document.querySelector("#save").click();document.documentElement.getButton("accept").disabled=0;document.documentElement.getButton("accept").click()')
+		}
+		//作用于 main 窗口
 	function saveAndOpen_on_main(enable) {
 		if (!enable) return;
 		Components.utils.import("resource://gre/modules/Downloads.jsm");
@@ -621,14 +637,14 @@
 						onDownloadChanged: function(dl) {
 							if (downloadPlus.appVersion < 29) {
 								if (dl.progress == 100 && saveAndOpen.urls.indexOf(dl.source.url) > -1) {
-									(downloadPlus.save_And_Open_RorL == 0) && dl.reveal(); 
-									(downloadPlus.save_And_Open_RorL == 1) && dl.launch(); 
+									downloadPlus.save_And_Open_RorL == 0 && dl.reveal();
+									downloadPlus.save_And_Open_RorL == 1 && dl.launch();
 									saveAndOpen.urls[saveAndOpen.urls.indexOf(dl.source.url)] = "";
 								}
-							} else if(downloadPlus.appVersion >= 29) {
+							} else if (downloadPlus.appVersion >= 29) {
 								if (dl.progress == 100 && saveAndOpen.urls.indexOf(dl.source.url) > -1) {
-									(downloadPlus.save_And_Open_RorL == 0) && (new FileUtils.File(dl.target.path)).reveal();
-									(downloadPlus.save_And_Open_RorL == 1) && (new FileUtils.File(dl.target.path)).launch();
+									downloadPlus.save_And_Open_RorL == 0 && (new FileUtils.File(dl.target.path)).reveal();
+									downloadPlus.save_And_Open_RorL == 1 && (new FileUtils.File(dl.target.path)).launch();
 									saveAndOpen.urls[saveAndOpen.urls.indexOf(dl.source.url)] = "";
 								}
 							}
@@ -645,92 +661,92 @@
 
 	// 下载改名
 	function download_dialog_changeName(enable) {
-		//注:同时关闭改名和下拉菜单会导致下载文件的文件名不显示(非要关闭请默认在28行最前面加//来注释掉该功能)
-		if (!enable) return;
-		if (location != "chrome://mozapps/content/downloads/unknownContentType.xul") return;
-		document.querySelector("#mode").addEventListener("select", function() {
-			if (dialog.dialogElement("save").selected) {
-				if (!document.querySelector("#locationtext")) {
-					if (downloadPlus.download_dialog_changeName || downloadPlus.download_dialog_changeName_encodingConvert) {
-						var orginalString = "";
-						if (downloadPlus.download_dialog_changeName_encodingConvert) {
-							try {
-								orginalString = (opener.localStorage.getItem(dialog.mLauncher.source.spec) ||
-									dialog.mLauncher.source.asciiSpec.substring(dialog.mLauncher.source.asciiSpec.lastIndexOf("/"))).replace(/[\/:*?"<>|]/g, "");
-								opener.localStorage.removeItem(dialog.mLauncher.source.spec)
-							} catch (e) {
-								orginalString = dialog.mLauncher.suggestedFileName;
-							}
-						}
-						if (downloadPlus.download_dialog_changeName_encodingConvert)
-							var locationtext = document.querySelector("#location").parentNode.insertBefore(document.createElement("menulist"), document.querySelector("#location"));
-						else
-							var locationtext = document.querySelector("#location").parentNode.insertBefore(document.createElement("textbox"), document.querySelector("#location"));
-						locationtext.id = "locationtext";
-						if (downloadPlus.download_dialog_changeName && downloadPlus.download_dialog_changeName_encodingConvert)
-							locationtext.setAttribute("editable", "true");
-						locationtext.setAttribute("style", "margin-top:-2px;margin-bottom:-3px");
-						locationtext.setAttribute("tooltiptext", "Ctrl+\u70B9\u51FB\u8F6C\u6362url\u7F16\u7801\n\u5DE6\u952E\u003AUNICODE\n\u53F3\u952E\u003AGB2312");
-						locationtext.addEventListener("click", function(e) {
-							if (e.ctrlKey) {
-								if (e.button == 0)
-									this.value = decodeURIComponent(this.value);
-								if (e.button == 2) {
-									e.preventDefault();
-									converter.charset = "GB2312";
-									this.value = converter.ConvertToUnicode(unescape(this.value));
+			//注:同时关闭改名和下拉菜单会导致下载文件的文件名不显示(非要关闭请默认在28行最前面加//来注释掉该功能)
+			if (!enable) return;
+			if (location != "chrome://mozapps/content/downloads/unknownContentType.xul") return;
+			document.querySelector("#mode").addEventListener("select", function() {
+				if (dialog.dialogElement("save").selected) {
+					if (!document.querySelector("#locationtext")) {
+						if (downloadPlus.download_dialog_changeName || downloadPlus.download_dialog_changeName_encodingConvert) {
+							var orginalString = "";
+							if (downloadPlus.download_dialog_changeName_encodingConvert) {
+								try {
+									orginalString = (opener.localStorage.getItem(dialog.mLauncher.source.spec) ||
+										dialog.mLauncher.source.asciiSpec.substring(dialog.mLauncher.source.asciiSpec.lastIndexOf("/"))).replace(/[\/:*?"<>|]/g, "");
+									opener.localStorage.removeItem(dialog.mLauncher.source.spec)
+								} catch (e) {
+									orginalString = dialog.mLauncher.suggestedFileName;
 								}
 							}
-						}, false);
-						if (downloadPlus.download_dialog_changeName)
-							locationtext.value = dialog.mLauncher.suggestedFileName;
-						if (downloadPlus.download_dialog_changeName_encodingConvert) {
-							locationtext.addEventListener("command", function(e) {
-								if (downloadPlus.download_dialog_changeName)
-									locationtext.value = e.target.value;
-								document.title = "Opening " + e.target.value;
-							});
-							let menupopup = locationtext.appendChild(document.createElement("menupopup"));
-							let menuitem = menupopup.appendChild(document.createElement("menuitem"));
-							menuitem.value = dialog.mLauncher.suggestedFileName;
-							menuitem.label = "Original: " + menuitem.value;
-							if (!downloadPlus.download_dialog_changeName)
-								locationtext.value = menuitem.value;
-							let converter = Components.classes['@mozilla.org/intl/scriptableunicodeconverter']
-								.getService(Components.interfaces.nsIScriptableUnicodeConverter);
-
-							function createMenuitem(encoding) {
-									converter.charset = encoding;
-									let menuitem = menupopup.appendChild(document.createElement("menuitem"));
-									menuitem.value = converter.ConvertToUnicode(orginalString).replace(/^"(.+)"$/, "$1");
-									menuitem.label = encoding + ": " + menuitem.value;
+							if (downloadPlus.download_dialog_changeName_encodingConvert)
+								var locationtext = document.querySelector("#location").parentNode.insertBefore(document.createElement("menulist"), document.querySelector("#location"));
+							else
+								var locationtext = document.querySelector("#location").parentNode.insertBefore(document.createElement("textbox"), document.querySelector("#location"));
+							locationtext.id = "locationtext";
+							if (downloadPlus.download_dialog_changeName && downloadPlus.download_dialog_changeName_encodingConvert)
+								locationtext.setAttribute("editable", "true");
+							locationtext.setAttribute("style", "margin-top:-2px;margin-bottom:-3px");
+							locationtext.setAttribute("tooltiptext", "Ctrl+\u70B9\u51FB\u8F6C\u6362url\u7F16\u7801\n\u5DE6\u952E\u003AUNICODE\n\u53F3\u952E\u003AGB2312");
+							locationtext.addEventListener("click", function(e) {
+								if (e.ctrlKey) {
+									if (e.button == 0)
+										this.value = decodeURIComponent(this.value);
+									if (e.button == 2) {
+										e.preventDefault();
+										converter.charset = "GB2312";
+										this.value = converter.ConvertToUnicode(unescape(this.value));
+									}
 								}
-								["GB18030", "BIG5", "Shift-JIS"].forEach(function(item) {
-									createMenuitem(item)
+							}, false);
+							if (downloadPlus.download_dialog_changeName)
+								locationtext.value = dialog.mLauncher.suggestedFileName;
+							if (downloadPlus.download_dialog_changeName_encodingConvert) {
+								locationtext.addEventListener("command", function(e) {
+									if (downloadPlus.download_dialog_changeName)
+										locationtext.value = e.target.value;
+									document.title = "Opening " + e.target.value;
 								});
+								let menupopup = locationtext.appendChild(document.createElement("menupopup"));
+								let menuitem = menupopup.appendChild(document.createElement("menuitem"));
+								menuitem.value = dialog.mLauncher.suggestedFileName;
+								menuitem.label = "Original: " + menuitem.value;
+								if (!downloadPlus.download_dialog_changeName)
+									locationtext.value = menuitem.value;
+								let converter = Components.classes['@mozilla.org/intl/scriptableunicodeconverter']
+									.getService(Components.interfaces.nsIScriptableUnicodeConverter);
+
+								function createMenuitem(encoding) {
+										converter.charset = encoding;
+										let menuitem = menupopup.appendChild(document.createElement("menuitem"));
+										menuitem.value = converter.ConvertToUnicode(orginalString).replace(/^"(.+)"$/, "$1");
+										menuitem.label = encoding + ": " + menuitem.value;
+									}
+									["GB18030", "BIG5", "Shift-JIS"].forEach(function(item) {
+										createMenuitem(item)
+									});
+							}
 						}
 					}
+					document.querySelector("#location").hidden = true;
+					document.querySelector("#locationtext").hidden = false;
+				} else {
+					document.querySelector("#locationtext").hidden = true;
+					document.querySelector("#location").hidden = false;
 				}
-				document.querySelector("#location").hidden = true;
-				document.querySelector("#locationtext").hidden = false;
-			} else {
-				document.querySelector("#locationtext").hidden = true;
-				document.querySelector("#location").hidden = false;
-			}
-		}, false)
-		if (downloadPlus.download_dialog_changeName_locking)
-			dialog.dialogElement("save").click();
-		else
-			dialog.dialogElement("save").selected && dialog.dialogElement("save").click();
-		window.addEventListener("dialogaccept", function() {
-			if ((document.querySelector("#locationtext").value != dialog.mLauncher.suggestedFileName) && dialog.dialogElement("save").selected) {
-				var mainwin = Components.classes["@mozilla.org/appshell/window-mediator;1"].getService(Components.interfaces.nsIWindowMediator).getMostRecentWindow("navigator:browser");
-				mainwin.eval("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, document.querySelector("#locationtext").value, null, null, null, null, null, null, mainwin.document, Components.classes['@mozilla.org/preferences-service;1'].getService(Components.interfaces.nsIPrefBranch).getBoolPref("browser.download.useDownloadDir"), null);
-				document.documentElement.removeAttribute("ondialogaccept");
-			}
-		}, false);
-	}
-	//作用于 main 窗口
+			}, false)
+			if (downloadPlus.download_dialog_changeName_locking)
+				dialog.dialogElement("save").click();
+			else
+				dialog.dialogElement("save").selected && dialog.dialogElement("save").click();
+			window.addEventListener("dialogaccept", function() {
+				if ((document.querySelector("#locationtext").value != dialog.mLauncher.suggestedFileName) && dialog.dialogElement("save").selected) {
+					var mainwin = Components.classes["@mozilla.org/appshell/window-mediator;1"].getService(Components.interfaces.nsIWindowMediator).getMostRecentWindow("navigator:browser");
+					mainwin.eval("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, document.querySelector("#locationtext").value, null, null, null, null, null, null, mainwin.document, Components.classes['@mozilla.org/preferences-service;1'].getService(Components.interfaces.nsIPrefBranch).getBoolPref("browser.download.useDownloadDir"), null);
+					document.documentElement.removeAttribute("ondialogaccept");
+				}
+			}, false);
+		}
+		//作用于 main 窗口
 	function download_dialog_changeName_on_main(enable) {
 		if (!enable) return;
 		const obsService = Cc['@mozilla.org/observer-service;1'].getService(Ci.nsIObserverService);
@@ -874,5 +890,6 @@
 		return el;
 	}
 
+	downloadPlus.init();
 	window.downloadPlus = downloadPlus;
 })();
