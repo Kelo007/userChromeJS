@@ -31,7 +31,7 @@ downloadPlus V38.uc.js
   - [ ] 根据后缀名自动保存到指定文件夹 功能正在开发中，敬请期待。 
 
 ###图片  
-![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.jpg "downloadPlus 设置")  
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.png "downloadPlus 设置")  
 ###更新记录  
  - 2015.05.03 修复一些Bug，脚本开关无需重启了  
  - 2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能  
