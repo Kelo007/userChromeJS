@@ -298,8 +298,8 @@
 							<caption label="下载界面"/>\
 							<checkbox id="download_dialog_saveas" label="另存为" preference="download_dialog_saveas"/>\
 							<hbox align="center">\
-							            <checkbox id="download_dialog_saveTo" label="保存到" oncommand="_changeStatus(event)" align="center" preference="download_dialog_saveTo"/>\
-							            <label value="后缀样式：" align="center"/>\
+							            <checkbox id="download_dialog_saveTo" label="保存到" oncommand="_changeStatus(event)" preference="download_dialog_saveTo"/>\
+							            <label value="后缀样式："/>\
 							            <menulist preference="download_dialog_saveTo_suffix" id="download_dialog_saveTo_suffix" style="width:220px">\
 								            <menupopup>\
 									            <menuitem label="样式：如downloadPlus.uc.js(1).7z" value="0"/>\
@@ -322,7 +322,7 @@
 							<hbox align="center">\
 							            <checkbox id="save_And_Open" label="保存并打开（主界面、下载界面）" tooltiptext="修改暂时需重启生效，很快会更新" oncommand="_changeStatus(event)" preference="save_And_Open"/>\
 							            <label value="打开方式："/>\
-							            <menulist align="center" preference="save_And_Open_RorL" id="save_And_Open_RorL" style="width:120px">\
+							            <menulist preference="save_And_Open_RorL" id="save_And_Open_RorL" style="width:120px">\
 								            <menupopup>\
 									            <menuitem label="打开所在文件夹" value="0"/>\
 									            <menuitem label="打开文件" value="1"/>\
