@@ -28,7 +28,7 @@ downloadPlus V38.uc.js
   - [x] 下载弹出窗口任何地方双击执行下载。  
   - [x] "保存并打开"，新增打开方式（打开所在文件夹、打开文件）。  
   - [ ] "保存到" 设置文件夹的UI 正在开发中，敬请期待。  *如要修改在脚本826行。*   
-  - [ ] 根据后缀名自动保存到指定文件夹 功能正在开发中，敬请期待。  
+  - [ ] "根据后缀名自动保存到指定文件夹" 功能正在开发中，敬请期待。  
 
 ###图片  
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.png "downloadPlus 设置")  
