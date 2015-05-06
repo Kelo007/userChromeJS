@@ -316,7 +316,6 @@
 							<checkbox id="new_Download" label="新建下载 （主界面、我的足迹）" oncommand="_changeStatus(event)" preference="new_Download"/>\
 							<hbox align="center" class="indent">\
 							            <checkbox align="center" id="new_Download_popups" label="是否弹窗"  preference="new_Download_popups"/>\
-							            <label align="center" style="font-style: italic;" value="新版已经失效了，考虑删除或修改"/>\
 							</hbox>\
 							<checkbox id="downloadsPanel_removeFile" label="从硬盘中删除 （主界面、我的足迹）" tooltiptext="修改暂时需重启生效，很快会更新" preference="downloadsPanel_removeFile"/>\
 							<hbox align="center">\
