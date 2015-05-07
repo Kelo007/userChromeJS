@@ -869,7 +869,7 @@
 		s.value = dialog.mLauncher.source.spec;
 		s.setAttribute("crop", "center");
 		s.setAttribute("tooltiptext", dialog.mLauncher.source.spec);
-		s.setAttribute("ondblclick", 'Components.classes["@mozilla.org/widget/clipboardhelper;1"].getService(Components.interfaces.nsIClipboardHelper).copyString(dialog.mLauncher.source.spec)')
+		s.setAttribute("ondblclick", 'Components.classes["@mozilla.org/widget/clipboardhelper;1"].getService(Components.interfaces.nsIClipboardHelper).copyString(dialog.mLauncher.source.spec)');
 	}
 
 	// 下载弹出窗口双击文件项执行下载
@@ -878,7 +878,7 @@
 		addEventListener("dblclick", function(event) {
 			downloadPlus.download_dialog_doubleclickanyW && document.documentElement.getButton("accept").click();
 			event.target.nodeName === "radio" && document.documentElement.getButton("accept").click();
-		}, false)
+		}, false);
 	}
 
 	function download_speed(enable) {
@@ -888,7 +888,7 @@
 					downloadPlus.Default_DownloadsViewItem_prototype_update);
 			} else if (downloadPlus.appVersion < 38) {
 				eval("DownloadsViewItem.prototype._updateStatusLine = " +
-					downloadPlus.Default_DownloadsViewItem_prototype_update)
+					downloadPlus.Default_DownloadsViewItem_prototype_update);
 			}
 			return;
 		}
@@ -897,7 +897,7 @@
 				DownloadsViewItem.prototype._updateProgress.toString().replace('status.text', 'status.tip'));
 		} else if (downloadPlus.appVersion < 38) {
 			eval("DownloadsViewItem.prototype._updateStatusLine = " +
-				DownloadsViewItem.prototype._updateStatusLine.toString().replace('[statusTip', '[status'))
+				DownloadsViewItem.prototype._updateStatusLine.toString().replace('[statusTip', '[status'));
 		}
 
 	}
