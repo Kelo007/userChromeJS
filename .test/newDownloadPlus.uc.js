@@ -1,24 +1,24 @@
 // ==UserScript==
-// @name         newDownloadPlus.uc.js
-// @description  从硬盘中删除+下载重命名并可转码+双击复制链接+另存为+保存并打开+完成下载提示音+自动关闭下载产生的空白标签。
-// @author       Kelo 再次修改整合  (w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞)
-// @charset      UTF-8
-// @include      chrome://browser/content/browser.xul
-// @include      chrome://browser/content/places/places.xul
-// @include      chrome://mozapps/content/downloads/unknownContentType.xul
-// @include      chrome://mozapps/content/downloads/downloads.xul
-// @inspect      window.downloadPlus
-// @startup      window.downloadPlus.init();
-// @shutdown     window.downloadPlus.onDestroy();
-// @optionsURL   about:config?filter=userChromeJS.downloadPlus.
-// @config 	 window.downloadPlus.openPref();
-// @version      2015.05.07 使用黒仪大螃蟹的最新"从硬盘中删除"代码  增加"下载面板显示下载速度"功能
-// @version      2015.05.03 修复一些Bug，脚本开关无需重启了
-// @version      2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能
-// @version      2015.05.01 修复多个功能，增加设置UI
-// @version      2014.11.02 增加多个功能
-// @version      2014.06.06 add delay to fix for new userChrome.js
-// @note         设置菜单在菜单栏里，id为downloadPlus_set。
+// @name	newDownloadPlus.uc.js
+// @description	从硬盘中删除+下载重命名并可转码+双击复制链接+另存为+保存并打开+完成下载提示音+自动关闭下载产生的空白标签。
+// @author	Kelo 再次修改整合  (w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞)
+// @charset	UTF-8
+// @include	chrome://browser/content/browser.xul
+// @include	chrome://browser/content/places/places.xul
+// @include	chrome://mozapps/content/downloads/unknownContentType.xul
+// @include	chrome://mozapps/content/downloads/downloads.xul
+// @inspect	window.downloadPlus
+// @startup	window.downloadPlus.init();
+// @shutdown	window.downloadPlus.onDestroy();
+// @optionsURL	about:config?filter=userChromeJS.downloadPlus.
+// @config	window.downloadPlus.openPref();
+// @version	2015.05.07 使用黒仪大螃蟹的最新"从硬盘中删除"代码  增加"下载面板显示下载速度"功能
+// @version	2015.05.03 修复一些Bug，脚本开关无需重启了
+// @version	2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能
+// @version	2015.05.01 修复多个功能，增加设置UI
+// @version	2014.11.02 增加多个功能
+// @version	2014.06.06 add delay to fix for new userChrome.js
+// @note	设置菜单在菜单栏里，id为downloadPlus_set。
 // ==/UserScript==
 (function() {
 	let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
@@ -248,8 +248,8 @@
 							<preference id="download_dialog_saveTo" type="bool" name="userChromeJS.downloadPlus.download_dialog_saveTo"/>\
 							<preference id="download_dialog_saveTo_suffix" type="int" name="userChromeJS.downloadPlus.download_dialog_saveTo_suffix"/>\
 							<preference id="download_dialog_showCompleteURL" type="bool" name="userChromeJS.downloadPlus.download_dialog_showCompleteURL"/>\
-						            <preference id="download_dialog_doubleclicksaveL" type="bool" name="userChromeJS.downloadPlus.download_dialog_doubleclicksaveL"/>\
-						            <preference id="download_dialog_doubleclickanyW" type="bool" name="userChromeJS.downloadPlus.download_dialog_doubleclickanyW"/>\
+							<preference id="download_dialog_doubleclicksaveL" type="bool" name="userChromeJS.downloadPlus.download_dialog_doubleclicksaveL"/>\
+							<preference id="download_dialog_doubleclickanyW" type="bool" name="userChromeJS.downloadPlus.download_dialog_doubleclickanyW"/>\
 						</preferences>\
 						<script>\
 							function Resets(aBool) {\
@@ -274,24 +274,24 @@
 							}\
 							function changeStatus() {\
 								$("new_Download_popups").disabled = !($("new_Download").value);\
-							            $("download_dialog_changeName_encodingConvert").disabled = $("download_dialog_changeName_locking").disabled = !($("download_dialog_changeName").value);\
+								$("download_dialog_changeName_encodingConvert").disabled = $("download_dialog_changeName_locking").disabled = !($("download_dialog_changeName").value);\
 								$("download_dialog_saveTo_suffix").disabled = !($("download_dialog_saveTo").value);\
-							            $("save_And_Open_RorL").disabled =  !($("save_And_Open").value);\
+								$("save_And_Open_RorL").disabled =  !($("save_And_Open").value);\
 							}\
 							function _changeStatus(event) {\
 								switch(event.target.id){\
 									case "new_Download": \
 									$("new_Download_popups").disabled = ($("new_Download").value);\
 									break;\
-                                                                                                            case "download_dialog_changeName":\
-								            $("download_dialog_changeName_encodingConvert").disabled = $("download_dialog_changeName_locking").disabled = ($("download_dialog_changeName").value);\
-								            break;\
-								            case "download_dialog_saveTo":\
-								            $("download_dialog_saveTo_suffix").disabled = ($("download_dialog_saveTo").value);\
-								            break;\
-								            case "save_And_Open":\
-								            $("save_And_Open_RorL").disabled = ($("save_And_Open").value);\
-								            break;\
+									case "download_dialog_changeName":\
+									$("download_dialog_changeName_encodingConvert").disabled = $("download_dialog_changeName_locking").disabled = ($("download_dialog_changeName").value);\
+									break;\
+									case "download_dialog_saveTo":\
+									$("download_dialog_saveTo_suffix").disabled = ($("download_dialog_saveTo").value);\
+									break;\
+									case "save_And_Open":\
+									$("save_And_Open_RorL").disabled = ($("save_And_Open").value);\
+									break;\
 								}\
 							}\
 							function $(id) document.getElementById(id);\
@@ -352,7 +352,7 @@
 						</hbox>\
 					</prefpane>\
 					</prefwindow>\
-          			';
+			';
 			return encodeURIComponent(xul);
 		},
 	};
