@@ -140,7 +140,7 @@
 							downloadFileSize(self.getPrefs(0, "downloadFileSize", false));
 						}
 						if (!type || type === "autoClose_blankTab") {
-							autoClose_blankTab(self.getPrefs(0, "downloadFileSize", false));
+							autoClose_blankTab(self.getPrefs(0, "autoClose_blankTab", false));
 						}
 						if (!type || type === "save_And_Open") {
 							saveAndOpen_on_main(self.getPrefs(0, "save_And_Open", false));
