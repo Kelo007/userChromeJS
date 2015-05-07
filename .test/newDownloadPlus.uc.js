@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         downloadPlus V38.uc.js
+// @name         newDownloadPlus.uc.js
 // @description  从硬盘中删除+下载重命名并可转码+双击复制链接+另存为+保存并打开+完成下载提示音+自动关闭下载产生的空白标签。
 // @author       Kelo 再次修改整合  (w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞)
 // @charset      UTF-8
@@ -12,6 +12,7 @@
 // @shutdown     window.downloadPlus.onDestroy();
 // @optionsURL   about:config?filter=userChromeJS.downloadPlus.
 // @config 	 window.downloadPlus.openPref();
+// @version      2015.05.07 使用黒仪大螃蟹的最新"从硬盘中删除"代码  增加"下载面板显示下载速度"功能
 // @version      2015.05.03 修复一些Bug，脚本开关无需重启了
 // @version      2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能
 // @version      2015.05.01 修复多个功能，增加设置UI
@@ -73,6 +74,7 @@
 					case 'autoClose_blankTab':
 					case 'save_And_Open':
 					case 'save_And_Open_RorL':
+					case 'download_speed':
 					case 'download_dialog_changeName':
 					case 'download_dialog_changeName_encodingConvert':
 					case 'download_dialog_changeName_locking':
@@ -92,6 +94,7 @@
 		loadDefault: function() {
 			this.Default_DownloadUtils_convertByteUnits = DownloadUtils.convertByteUnits;
 			this.Default_gBrowser_mTabProgressListener = gBrowser.mTabProgressListener.toString();
+			this.Default_DownloadsViewItem_prototype_update = (DownloadsViewItem.prototype._updateStatusLine || DownloadsViewItem.prototype._updateProgress).toString();
 		},
 
 		loadSetting: function(type) {
@@ -144,6 +147,9 @@
 						}
 						if (!type || type === "download_dialog_changeName") {
 							download_dialog_changeName_on_main(self.getPrefs(0, "download_dialog_changeName", false));
+						}
+						if (!type || type === "download_speed") {
+							download_speed(self.getPrefs(0, "download_speed", false));
 						}
 					}, 200);
 					break;
@@ -234,6 +240,7 @@
 							<preference id="autoClose_blankTab" type="bool" name="userChromeJS.downloadPlus.autoClose_blankTab"/>\
 							<preference id="save_And_Open" type="bool" name="userChromeJS.downloadPlus.save_And_Open"/>\
 							<preference id="save_And_Open_RorL" type="int" name="userChromeJS.downloadPlus.save_And_Open_RorL"/>\
+							<preference id="download_speed" type="bool" name="userChromeJS.downloadPlus.download_speed"/>\
 							<preference id="download_dialog_changeName" type="bool" name="userChromeJS.downloadPlus.download_dialog_changeName"/>\
 							<preference id="download_dialog_changeName_encodingConvert" type="bool" name="userChromeJS.downloadPlus.download_dialog_changeName_encodingConvert"/>\
 							<preference id="download_dialog_changeName_locking" type="bool" name="userChromeJS.downloadPlus.download_dialog_changeName_locking"/>\
@@ -254,6 +261,7 @@
 								$("autoClose_blankTab").value = aBool;\
 								$("save_And_Open").value = aBool;\
 								$("save_And_Open_RorL").value = aBool ? 1 : 0;\
+								$("download_speed").value = aBool;\
 								$("download_dialog_changeName").value = aBool;\
 								$("download_dialog_changeName_encodingConvert").value = aBool;\
 								$("download_dialog_changeName_locking").value = aBool;\
@@ -293,6 +301,7 @@
 							<checkbox id="downloadSound_Play" label="下载完成提示音" preference="downloadSound_Play"/>\
 							<checkbox id="downloadFileSize" label="精确显示文件大小" preference="downloadFileSize"/>\
 							<checkbox id="autoClose_blankTab" label="自动关闭下载产生的空白标签" preference="autoClose_blankTab"/>\
+							<checkbox id="download_speed" label="下载面板显示下载速度" preference="download_speed"/>\
 						</groupbox>\
 						<groupbox>\
 							<caption label="下载界面"/>\
@@ -490,54 +499,36 @@
 				if (state != "0" && state != "4" && state != "5")
 					RMBtn.removeAttribute("disabled");
 			},
-
 			removeMenu: function() {
-				try {
-					removeDownloadfile.removeStatus();
-				} catch (e) {};
+				try {removeDownloadfile.removeStatus();} catch (e) {};
 				if (document.querySelector("#removeDownload")) return;
 				var menuitem = document.createElement("menuitem"),
 					rlm = document.querySelector('.downloadRemoveFromHistoryMenuItem');
-				menuitem.setAttribute("label", rlm.getAttribute("label").indexOf("History") != -1 ? "Delete File" : "\u4ece\u7535\u8111\u786c\u76d8\u4e2d\u79fb\u9664");
+				menuitem.setAttribute("label", rlm.getAttribute("label").indexOf("History") != -1 ? "Delete File" : "\u4ECE\u786C\u76D8\u4E2D\u5220\u9664");
 				menuitem.setAttribute("id", "removeDownload");
 
 				menuitem.onclick = function(e) {
 					if (e.target.disabled) return;
 					var path = "";
 					if (typeof DownloadsViewItemController != "undefined") {
-						try {
-							if (downloadPlus.appVersion < 38) {
-								DownloadsView._dataItems.forEach(function(item) {
-									if (item.downloadGuid == DownloadsView.richListBox.selectedItem.getAttribute("downloadGuid")) {
-										path = item.file;
-										if (item.done == false) path += ".part";
-										if (!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
-										return path;
-									}
-								});
-							} else if (downloadPlus.appVersion >= 38) {
-								DownloadsView._downloads.forEach(function(item) {
-									var _path = decodeURI(DownloadsView.richListBox.selectedItem.image)
-										.replace(/moz\-icon\:\/\//, "").replace(/\?size\=32$/, "")
-										.replace(/\?size\=32\&state\=normal$/, "").replace(/\//g, "\\\\");
-									if (item.target.path == _path) path = _path;
-									if (DownloadsView.richListBox.selectedItem.getAttribute('state') == "2") path = path + ".part";
-									if (!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
-									return path;
-								});
-							}
-						} catch (e) {
-							path = decodeURI(DownloadsView.richListBox.selectedItem.image)
-								.replace(/moz\-icon\:\/\/file\:\/\/\//, "").replace(/\?size\=32$/, "")
-								.replace(/\?size\=32\&state\=normal$/, "").replace(/\//g, "\\\\");
-							if (DownloadsView.richListBox.selectedItem.getAttribute('state') == "2") path = path + ".part";
-							if (!path) console.error('错误\n不用担心，只是有时菜单捕获不到');
+						let selectedItem = DownloadsView.richListBox.selectedItem;
+						if (DownloadsView.controllerForElement) {
+							//FF38
+							path = DownloadsView.controllerForElement(selectedItem).download.target.path;
+						} else {
+							//FF37
+							path = (new DownloadsViewItemController(selectedItem)).dataItem.file;
 						}
 					} else {
 						DownloadsView = document.getElementById("downloadsRichListBox")._placesView;
-						var selectedItems = DownloadsView._richlistbox.selectedItems;
-						if (downloadPlus.appVersion < 38) path = selectedItems[0]._shell._metaData.filePath;
-						else if (downloadPlus.appVersion >= 38) path = selectedItems[0]._shell.download.target.path;
+						let selectedItemsShell = DownloadsView._richlistbox.selectedItems[0]._shell;
+						if (!(selectedItemsShell._metaData && selectedItemsShell._metaData.filePath)) {
+							//FF38
+							path = (selectedItemsShell._sessionDownload || selectedItemsShell._historyDownload).target.path;
+						} else {
+							//FF37
+							path = selectedItemsShell._metaData.filePath;
+						}
 					}
 
 					var file = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
@@ -549,14 +540,26 @@
 							.getFileFromURLSpec(path).path;
 						file.initWithPath(fileUrl);
 					}
+					if (!file.exists()) {
+						if (/\..{0,10}(\.part)$/.test(file.path))
+							file.initWithPath(file.path.replace(".part", ""));
+						else
+							file.initWithPath(file.path + ".part");
+					}
 					if (file.exists()) {
 						file.permissions |= 0666;
 						file.remove(0);
 					}
 
 					if (typeof DownloadsViewItemController != "undefined") {
-						if (downloadPlus.appVersion < 38) new DownloadsViewItemController(DownloadsView.richListBox.selectedItem).doCommand("cmd_delete");
-						else if (downloadPlus.appVersion >= 38) DownloadsView.controllerForElement(DownloadsView.richListBox.selectedItem).doCommand("cmd_delete");
+						let selectedItem = DownloadsView.richListBox.selectedItem;
+						if (DownloadsView.controllerForElement) {
+							//FF38
+							DownloadsView.controllerForElement(selectedItem).doCommand("cmd_delete");
+						} else {
+							//FF37
+							(new DownloadsViewItemController(selectedItem)).doCommand("cmd_delete");
+						}
 					} else {
 						DownloadsView.doCommand("cmd_delete");
 					}
@@ -566,21 +569,19 @@
 				removeDownloadfile.removeStatus();
 			},
 
-			Start: function() {
+			init: function() {
 				document.querySelector("#downloadsContextMenu").addEventListener("popupshowing", this.removeMenu, false);
-
 			}
 		}
 		if (location != "chrome://browser/content/places/places.xul") {
 			try {
 				eval("DownloadsPanel.showPanel = " + DownloadsPanel.showPanel.toString()
-					.replace(/this\.\_openPopupIfDataReady\(\)/, "{$&;removeDownloadfile\.Start\(\);}"));
-
+					.replace(/(?:this|DownloadsPanel)\.\_openPopupIfDataReady\(\)/, "{$&;removeDownloadfile\.init\(\);}"));
 			} catch (e) {
 				//Components.utils.reportError(e);
 			}
 		} else {
-			removeDownloadfile.Start();
+			removeDownloadfile.init();
 		}
 	}
 
@@ -626,7 +627,7 @@
 			saveAndOpen.setAttribute("label", "\u4FDD\u5B58\u5E76\u6253\u5F00");
 			saveAndOpen.setAttribute("oncommand", 'Components.classes["@mozilla.org/browser/browserglue;1"].getService(Components.interfaces.nsIBrowserGlue).getMostRecentBrowserWindow().saveAndOpen.urls.push(dialog.mLauncher.source.asciiSpec);document.querySelector("#save").click();document.documentElement.getButton("accept").disabled=0;document.documentElement.getButton("accept").click()')
 		}
-	//作用于 main 窗口
+		//作用于 main 窗口
 	function saveAndOpen_on_main(enable) {
 		if (!enable) return;
 		Components.utils.import("resource://gre/modules/Downloads.jsm");
@@ -878,6 +879,27 @@
 			downloadPlus.download_dialog_doubleclickanyW && document.documentElement.getButton("accept").click();
 			event.target.nodeName === "radio" && document.documentElement.getButton("accept").click();
 		}, false)
+	}
+
+	function download_speed(enable) {
+		if (!enable) {
+			if (downloadPlus.appVersion >= 38) {
+				eval("DownloadsViewItem.prototype._updateProgress = " +
+					downloadPlus.Default_DownloadsViewItem_prototype_update);
+			} else if (downloadPlus.appVersion < 38) {
+				eval("DownloadsViewItem.prototype._updateStatusLine = " +
+					downloadPlus.Default_DownloadsViewItem_prototype_update)
+			}
+			return;
+		}
+		if (downloadPlus.appVersion >= 38) {
+			eval("DownloadsViewItem.prototype._updateProgress = " +
+				DownloadsViewItem.prototype._updateProgress.toString().replace('status.text', 'status.tip'));
+		} else if (downloadPlus.appVersion < 38) {
+			eval("DownloadsViewItem.prototype._updateStatusLine = " +
+				DownloadsViewItem.prototype._updateStatusLine.toString().replace('[statusTip', '[status'))
+		}
+
 	}
 
 	function $(id, doc) {
