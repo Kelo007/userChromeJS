@@ -24,19 +24,22 @@ newDownloadPlus.uc.js
   - 自动关闭下载产生的空白标签。  
 
  - **新增功能**
-  - [x] 设置UI，轻松操作，再也不用改代码。  
+  - [x] UI设置界面，轻松操作，再也不用改代码。  
   - [x] 下载弹出窗口任何地方双击执行下载。  
   - [x] "保存并打开"，新增打开方式（打开所在文件夹、打开文件）。  
   - [x] "下载面板显示下载速度" 功能。  
+  - [x] "HASH 计算" 功能。  
   - [ ] "保存到" 设置文件夹的UI 正在开发中，敬请期待。  *如要修改在脚本826行。*   
   - [ ] "根据后缀名自动保存到指定文件夹" 功能正在开发中，敬请期待。  
 
 ###图片  
-![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.png "downloadPlus 设置")  
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.png "downloadPlus 设置")   
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/HASH 计算.png "HASH 计算")   
 ###更新记录  
- - 2015.05.07 使用黒仪大螃蟹的最新"从硬盘中删除"代码，增加"下载面板显示下载速度"功能，改名为newDownloadPlus.uc.js。
- - 2015.05.03 修复一些Bug，脚本开关无需重启了  
- - 2015.05.02 修复多个功能，完美支持FFV38，完善设置UI。增加N个功能  
- - 2015.05.01 修复多个功能，增加设置UI  
+ - 2015.05.09 完善代码，新增"HASH 计算功能"。  
+ - 2015.05.07 使用黒仪大螃蟹的最新"从硬盘中删除"代码，增加"下载面板显示下载速度"功能，改名为newDownloadPlus.uc.js。  
+ - 2015.05.03 修复一些Bug，脚本开关无需重启了。  
+ - 2015.05.02 修复多个功能，完美支持FFV38，完善UI设置界面。增加N个功能。  
+ - 2015.05.01 修复多个功能，增加UI设置界面。  
 
 
