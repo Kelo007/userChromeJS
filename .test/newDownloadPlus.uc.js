@@ -176,7 +176,7 @@
 							self.download_dialog_doubleclicksaveL(self.getPrefs(0, "download_dialog_doubleclicksaveL", false));
 						}
 						window.sizeToContent(); // 下载弹出窗口大小自适应(确保在添加的按钮之后加载)
-					}, 500);
+					}, 200);
 					break;
 				case "chrome://browser/content/places/places.xul":
 					setTimeout(function() {
@@ -333,7 +333,7 @@
 							            <checkbox align="center" id="new_Download_popups" label="是否弹窗"  preference="new_Download_popups"/>\
 							</hbox>\
 							<checkbox id="downloadsPanel_removeFile" label="从硬盘中删除 （主界面、我的足迹）" tooltiptext="修改暂时需重启生效，很快会更新" preference="downloadsPanel_removeFile"/>\
-							<checkbox id="download_checksum" label="HASH 计算" preference="download_checksum"/>\
+							<checkbox id="download_checksum" label="HASH 计算（主界面、我的足迹）" preference="download_checksum"/>\
 							<hbox align="center">\
 							            <checkbox id="save_And_Open" label="保存并打开（主界面、下载界面）" tooltiptext="修改暂时需重启生效，很快会更新" oncommand="_changeStatus(event)" preference="save_And_Open"/>\
 							            <label value="打开方式："/>\
@@ -964,15 +964,17 @@
 							}
 						}
 
+						var result = "";
+						var algorithm_n = 0;
+						var algorithm_arg = ["MD5", "SHA1", "SHA256"];
+
 						//来自 https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsICryptoHash#Computing_the_Hash_of_a_File
-						var clcltHashld = function(path, algorithm) {
-							var path = path;
-							var f = Components.classes['@mozilla.org/file/local;1'].createInstance(Components.interfaces.nsILocalFile);
-							f.initWithPath(path);
-							if (!f.exists()) return false;
-							var istream = Components.classes['@mozilla.org/network/file-input-stream;1'].createInstance(Components.interfaces.nsIFileInputStream);
-							istream.init(f, 0x01, 0444, 0);
-							var ch = Components.classes['@mozilla.org/security/hash;1'].createInstance(Components.interfaces.nsICryptoHash);
+						var clcltHashld = function(file) {
+							var algorithm = algorithm_arg[algorithm_n];
+							var delay = file.fileSize / 1024 / 1024 * 10;
+							var istream = Cc['@mozilla.org/network/file-input-stream;1'].createInstance(Ci.nsIFileInputStream);
+							istream.init(file, 0x01, 0444, 0);
+							var ch = Cc['@mozilla.org/security/hash;1'].createInstance(Ci.nsICryptoHash);
 							ch.init(ch[algorithm]);
 							const PR_UINT32_MAX = 0xffffffff;
 							ch.updateFromStream(istream, PR_UINT32_MAX);
@@ -982,27 +984,38 @@
 								return ('0' + charCode.toString(16)).slice(-2);
 							}
 							var s = [toHexString(hash.charCodeAt(i)) for (i in hash)].join('');
-							return s;
-
+							result += algorithm + "：" + s + "\n";
+							algorithm_n ++;
+							var timer = Components.classes["@mozilla.org/timer;1"].createInstance(Components.interfaces.nsITimer);
+						 	timer.initWithCallback(interval, delay, Components.interfaces.nsITimer.TYPE_ONE_SHOT);
 						};
 
-						var copy = function(aText) {
+						 var interval = function(timer){
+						 	if(algorithm_n == algorithm_arg.length){
+						 		prompts(result);
+						 		return;
+						 	}
+						 	clcltHashld(file)
+						 };
+						 var prompts = function(result){
+						 	var prompts = Components.classes["@mozilla.org/embedcomp/prompt-service;1"].getService(Components.interfaces.nsIPromptService);
+							var flags = prompts.BUTTON_POS_0 * prompts.BUTTON_TITLE_OK + prompts.BUTTON_POS_1 * prompts.BUTTON_TITLE_CANCEL + prompts.BUTTON_POS_2 * prompts.BUTTON_TITLE_IS_STRING;
+							var button = prompts.confirmEx(null, "HASH 计算", result, flags, "", "", "复制", null, {value: false});
+							if (button == 2) copy(result);
+						 };
+						 var copy = function(aText) {
 							Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(aText);
 							XULBrowserWindow.statusTextField.label = "Copy: " + aText;
 						};
-
-						var result = "";
-						["MD5", "SHA1", "MD2", "SHA256", "SHA384", "SHA512"].forEach(function(item) {
-							if (clcltHashld(path, item) == false) {
-								result = "出错了，检查文件是否删除\n文件地址：" + path;
-								return;
-							}
-							result += item + "：" + clcltHashld(path, item) + "\n";
-						});
-						var prompts = Components.classes["@mozilla.org/embedcomp/prompt-service;1"].getService(Components.interfaces.nsIPromptService);
-						var flags = prompts.BUTTON_POS_0 * prompts.BUTTON_TITLE_OK + prompts.BUTTON_POS_1 * prompts.BUTTON_TITLE_CANCEL + prompts.BUTTON_POS_2 * prompts.BUTTON_TITLE_IS_STRING;
-						var button = prompts.confirmEx(null, "HASH 计算", result, flags, "", "", "复制", null, {value: false});
-						if (button == 2) copy(result);
+						var file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+						file.initWithPath(path);
+						if (!file.exists()) {
+							result = "出错了，检查文件是否删除\n文件地址：" + path;
+						 	prompts(result);
+						}else if(file.fileSize >= 100000000)
+							Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService)
+    								.showAlertNotification('', 'downloadPlus', '当前文件过大，计算需要较长时间，建议使用专用软件。\n确定要继续吗，确定请点击。', true, '', {observe: function(subject, topic, data) {if(topic == 'alertclickcallback') interval(); }}, '');
+						else interval();
 					};
 					document.querySelector("#downloadsContextMenu").insertBefore(menuitem, rlm.nextSibling);
 					downloadPlus.checksum.checksumState();
