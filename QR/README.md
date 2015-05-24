@@ -9,7 +9,7 @@ QR.uc.js
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/QR/img/QR 2.png "QR 2")   
 
 ###更新记录    
- - 2015.05.02 2015.5.24 0.0.2 Update.完善界面  
+ - 2015.5.24 0.0.2 Update.完善界面  
  - 2015.5.23 0.0.1 Create.
 
 
