@@ -302,8 +302,13 @@
 		//================================ callback 集合 ================================
 		getIP: function(site, document) {
 			var that = getGoaIP;
-			var ip = document.querySelector(site.element).innerHTML
-				.match(that.regex);
+			try {
+				var ip = document.querySelector(site.element).innerHTML
+					.match(that.regex);
+			} catch(e) {
+				alert(e);
+				return;
+			}
 			that.ip = that.ip.concat(ip)
 			that.finishedSiteNum ++;
 			if (that.finishedSiteNum == Object.keys(that.sites).length) {
@@ -321,8 +326,13 @@
 		},
 
 		getGoaIP_get: function(site, document) {
-			var ip = document.querySelector(site.element).innerHTML
-				.match(getGoaIP.regex);
+			try {
+				var ip = document.querySelector(site.element).innerHTML
+					.match(getGoaIP.regex);
+			} catch(e) {
+				alert(e);
+				return;
+			}
 			var cookie = ip.join("|");
 			if (cookie.length > 50)
 				text = cookie.substr(0, 50) + "...";
