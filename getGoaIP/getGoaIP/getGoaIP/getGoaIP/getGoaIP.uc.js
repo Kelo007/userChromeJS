@@ -53,13 +53,13 @@
 				//==== 自定义callback ====
 				//== site 即自身obj ==
 				//== document 为网页 DOM ==
-				//== 新手 不建议使用 ==
+				//== 新手 不建议自定义 ==
 				//自定义 获取IP callback
 				//callback_get: function(site, document) {},
 				//自定义 下载 callback
 				callback_download: function(site, document) {
 					var downloadURL = document.querySelector(".entry-content > p:nth-child(4) > span:nth-child(1) > a:nth-child(1)").innerHTML;
-					//== 获取提取码==
+					//== 获取提取码 ==
 					//== 正则来自 panlink 感谢 jasonshaw ==
 					downloadURL += "#" + document.querySelector(".entry-content > p:nth-child(4) > span:nth-child(1)").innerHTML
 						.match(/\s*(提取密碼|提取密码|提取码|提取碼|提取|密碼|密码|百度|百度云|云盘|360云盘|360云|360yun|yun)[:：]?\s*(<[^>]+>)?\s*([0-9a-zA-Z]{4,})\s*/)[3];
@@ -107,6 +107,11 @@
 						getGoaIP.loadSetting(data);
 						break;
 				}
+			}
+			//Notification
+			if (topic == "alertclickcallback") {
+				Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(data);
+				XULBrowserWindow.statusTextField.label = "Copy: " + data;
 			}
 		},
 
@@ -226,12 +231,15 @@
 
 		makeMenu: function() {
 			var menu, menupopup, menuitem, menuseparator;
-			for (var i in this.sites) {
+			for (let i in this.sites) {
+				let site = this.sites[i];
 				menupopup = $C("menupopup", {});
+
 				menuitem = $C("menuitem", {
 					label: "获取IP",
 					class: "getGoaIP_get",
 					onclick: "getGoaIP.menuClick(event,'" + i + "')",
+					disabled: site.element || site.callback_get ? false : true,
 				});
 				menupopup.appendChild(menuitem);
 
@@ -239,14 +247,11 @@
 					label: "下载",
 					class: "getGoaIP_download",
 					onclick: "getGoaIP.menuClick(event,'" + i + "')",
-					disabled: this.sites[i].downloadURL || this.sites[i].callback_download ? false : true
+					disabled: site.downloadURL || site.callback_download ? false : true,
 				});
 				menupopup.appendChild(menuitem);
 
-				menu = $C("menu", {
-					id: i,
-					label: i,
-				});
+				menu = $C("menu", {label: i});
 				menu.appendChild(menupopup);
 
 				$("getGoaIP-popup").appendChild(menu);
@@ -262,9 +267,12 @@
 			if (event.target != event.currentTarget) return;
 			event.stopPropagation();
 			event.preventDefault();
-			for (var i in this.sites) {
-				this.getDom(this.sites[i], this.getIP);
+			for (let i in this.sites) {
+				let site = this.sites[i];
+				if (!site.element) continue;
+				this.getDom(site, this.getIP);
 			}
+			this.reset();
 		},
 
 		menuClick: function(event, site) {
@@ -303,50 +311,36 @@
 		getIP: function(site, document) {
 			var that = getGoaIP;
 			try {
-				var ip = document.querySelector(site.element).innerHTML
-					.match(that.regex);
-			} catch(e) {
-				alert(e);
-				return;
+				var ip = document.querySelector(site.element).innerHTML.match(that.regex);
+			} catch (e) {
+				return alert(e);
 			}
 			that.ip = that.ip.concat(ip)
 			that.finishedSiteNum ++;
-			if (that.finishedSiteNum == Object.keys(that.sites).length) {
+
+			if (that.finishedSiteNum == countObj(that.sites)) {
 				var cookie = that.ip.join("|");
-				if (cookie.length > 50)
-					text = cookie.substr(0, 50) + "...";
-				alert(text + "\n点击复制全部IP", "getGoaIP", cookie, function (subject, topic, data) {
-					if (topic == "alertclickcallback") {
-						Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(data);
-						XULBrowserWindow.statusTextField.label = "Copy: " + data;
-					}
-				});
+				var text = cutString(cookie, 50);
+				alert(text + "\n点击复制全部IP", "getGoaIP", cookie, that);
 				that.reset();
 			}
 		},
 
 		getGoaIP_get: function(site, document) {
+			var that = getGoaIP;
 			try {
-				var ip = document.querySelector(site.element).innerHTML
-					.match(getGoaIP.regex);
-			} catch(e) {
-				alert(e);
-				return;
+				var ip = document.querySelector(site.element).innerHTML.match(that.regex);
+			} catch (e) {
+				return alert(e);
 			}
 			var cookie = ip.join("|");
-			if (cookie.length > 50)
-				text = cookie.substr(0, 50) + "...";
-			alert(text + "\n点击复制全部IP", "getGoaIP", cookie, function (subject, topic, data) {
-				if (topic == "alertclickcallback") {
-					Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(data);
-					XULBrowserWindow.statusTextField.label = "Copy: " + data;
-				}
-			});
+			var text = cutString(cookie, 50);
+			alert(text + "\n点击复制全部IP", "getGoaIP", cookie, that);
 		},
 
 		getGoaIP_download: function(site, document) {
 			var mainwin = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator).getMostRecentWindow("navigator:browser");
-			saveURL(site.downloadURL , null, null, null, null, null, mainwin.document);
+			saveURL(site.downloadURL, null, null, null, null, null, mainwin.document);
 		},
 
 		reset: function() {
@@ -462,13 +456,16 @@
 
 	function alert(aString, aTitle, aCookie, aListner) {
 		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService)
-			.showAlertNotification("",
-				aTitle || "getGoaIP",
-				aString,
-				aListner ? true : false,
-				aCookie ? aCookie : null,
-				aListner ? aListner : null
-			);
+			.showAlertNotification("", aTitle || "getGoaIP", aString, !!aListner, aCookie ? aCookie : null, aListner ? aListner : null);
+	}
+
+	function cutString(str, len) {
+		if (str.length > len) return str.substr(0, len) + "...";
+		else return str;
+	}
+
+	function countObj(obj) {
+		return Object.keys(obj).length;
 	}
 
 	getGoaIP.init();
