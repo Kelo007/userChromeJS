@@ -30,7 +30,7 @@
 				url: "http://www.firefoxfan.com/firefox-gaogent/goagent-ip.html",
 				//==== CSS选择器 ====
 				//可能会变
-				element: "#crayon-5569b767110bd722123887-1",
+				element: "div[class='crayon-line'][id|='crayon']",
 				//==== 下载地址 可选 ====
 				downloadURL: "http://www.firefoxfan.com/goagentip/proxy.ini",
 			},
