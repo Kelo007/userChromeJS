@@ -15,7 +15,7 @@
 	let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
 	if (!window.Services) Cu.import("resource://gre/modules/Services.jsm");
 	if (window.getGoaIP) {
-		window.QRCreator.onDestroy();
+		window.getGoaIP.onDestroy();
 		delete window.getGoaIP;
 	}
 
@@ -159,7 +159,7 @@
 				$("getGoaIP-popup").parentNode.removeChild($("getGoaIP-popup"));
 				delete this.icon;
 			}
-			if(this.style){
+			if(this.style) {
 				this.style.parentNode.removeChild(this.style);
 				delete this.style;
 			}
@@ -185,14 +185,14 @@
 				xmlns:html="http://www.w3.org/1999/xhtml">\
 				<toolbarpalette id="mainPopupSet">\
 					<menupopup id="getGoaIP-popup" position="after_start">\
-				 	<menu label="图标位置">\
-						<menupopup id="getGoaIP_Icon_Pos">\
-							<menuitem type="radio" value="0" label="地址栏前端" name="Icon_Pos" oncommand="getGoaIP.setPrefs(1, \'Icon_Pos\', this.value);"/>\
-							<menuitem type="radio" value="1" label="地址栏后端" name="Icon_Pos" oncommand="getGoaIP.setPrefs(1, \'Icon_Pos\', this.value);"/>\
-							<menuitem type="radio" value="2" label="可移动按钮" name="Icon_Pos" oncommand="getGoaIP.setPrefs(1, \'Icon_Pos\', this.value);"/>\
-						</menupopup>\
-					</menu>\
-					<menuseparator/>\
+				 		<menu label="图标位置">\
+							<menupopup id="getGoaIP_Icon_Pos">\
+								<menuitem type="radio" value="0" label="地址栏前端" name="Icon_Pos" oncommand="getGoaIP.setPrefs(1, \'Icon_Pos\', this.value);"/>\
+								<menuitem type="radio" value="1" label="地址栏后端" name="Icon_Pos" oncommand="getGoaIP.setPrefs(1, \'Icon_Pos\', this.value);"/>\
+								<menuitem type="radio" value="2" label="可移动按钮" name="Icon_Pos" oncommand="getGoaIP.setPrefs(1, \'Icon_Pos\', this.value);"/>\
+							</menupopup>\
+						</menu>\
+						<menuseparator/>\
 					</menupopup>\
 				</toolbarpalette>\
 			</overlay>';
@@ -254,12 +254,12 @@
 		},
 
 		changeStatus: function() {
-			if($("getGoaIP_Icon_Pos")) 
+			if ($("getGoaIP_Icon_Pos")) 
 				$("getGoaIP_Icon_Pos").childNodes[this.Icon_Pos].setAttribute('checked', 'true');
 		},
 
 		iconClick: function(event) {
-			if(event.target != event.currentTarget) return;
+			if (event.target != event.currentTarget) return;
 			event.stopPropagation();
 			event.preventDefault();
 			for (var i in this.sites) {
@@ -268,7 +268,7 @@
 		},
 
 		menuClick: function(event, site) {
-			if(event.target != event.currentTarget || event.target.disabled) return;
+			if (event.target != event.currentTarget || event.target.disabled) return;
 			event.stopPropagation();
 			event.preventDefault();
 
@@ -318,7 +318,7 @@
 				alert(text + "\n点击复制全部IP", "getGoaIP", cookie, function (subject, topic, data) {
 					if (topic == "alertclickcallback") {
 						Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(data);
-							XULBrowserWindow.statusTextField.label = "Copy: " + data;
+						XULBrowserWindow.statusTextField.label = "Copy: " + data;
 					}
 				});
 				that.reset();
