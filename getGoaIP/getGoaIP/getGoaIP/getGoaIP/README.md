@@ -5,6 +5,7 @@ getGoaIP.uc.js
 
 ###图片  
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/getGoaIP/getGoaIP/getGoaIP/img/getGoaIP.png "getGoaIP")  
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/getGoaIP/getGoaIP/getGoaIP/img/getGoaIP2.png "getGoaIP2")  
 
 ###更新记录    
  - 2015.5.30 0.0.1 Create.  
