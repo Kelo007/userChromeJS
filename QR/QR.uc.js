@@ -10,6 +10,7 @@
 // @shutdown	window.QRCreator.onDestroy();
 // @optionsURL	about:config?filter=userChromeJS.QR.
 // @note	地址栏&工具栏二维码
+// @version	2015.6.05 0.0.3 Update.
 // @version	2015.5.24 0.0.2 Update.完善界面
 // @version	2015.5.23 0.0.1 Create.
 // ==/UserScript==
@@ -47,7 +48,7 @@
 
 		init: function() {
 			this.loadSetting();
-			this.prefs.addObserver('', this.Prefobs, false);
+			this.prefs.addObserver('', this, false);
 			window.addEventListener("unload", function() {
 				QRCreator.onDestroy();
 			}, false);
@@ -55,16 +56,22 @@
 
 		onDestroy: function() {
 			this.addIcon(false);
-			this.prefs.removeObserver('', this.Prefobs, false);
+			this.prefs.removeObserver('', this, false);
 			Services.obs.notifyObservers(null, "startupcache-invalidate", "");
 		},
 
-		Prefobs: function(subject, topic, data) {
+		observe: function (subject, topic, data) {
+			//overlay
+			if (topic == "xul-overlay-merged") {
+				QRCreator.changeStatus();
+				log("界面加载完毕");
+			}
+			//Prefobs
 			if (topic == 'nsPref:changed') {
 				switch (data) {
 					case 'Icon_Pos':
 					case 'QR_Type':
-					QRCreator.loadSetting(data);
+						QRCreator.loadSetting(data);
 						break;
 				}
 			}
@@ -118,17 +125,17 @@
 
 		//================================ 界面相关 ================================
 		addIcon: function(isAlert) {
-			if(this.icon) {
+			if (this.icon) {
 				this.icon.parentNode.removeChild(this.icon);
 				$("QRCreator-popup").parentNode.removeChild($("QRCreator-popup"));
 				$("QRCreator-panel").parentNode.removeChild($("QRCreator-panel"));
 				delete this.icon;
 			}
-			if(this.style){
+			if (this.style){
 				this.style.parentNode.removeChild(this.style);
 				delete this.style;
 			}
-			if(!isAlert) return;
+			if (!isAlert) return;
 			//================== 图标 ==================
 			this.icon = $C("toolbarbutton", {
 				id: "QRCreator-icon",
@@ -151,7 +158,7 @@
 				xmlns:html="http://www.w3.org/1999/xhtml">\
 				<toolbarpalette id="mainPopupSet">\
 					<menupopup id="QRCreator-popup" position="after_start">\
-					<menuitem label="自定文字" tooltiptext="输入文字创建二维码" oncommand="QRCreator.QRprompt();"/>\
+					<menuitem label="自定文字" tooltiptext="输入文字创建二维码" oncommand="QRCreator.launch(2);"/>\
 						<menu label="生成方式">\
 							<menupopup id="QRCreator_QR_Type">\
 								<menuitem type="radio" value="0" label="本地生成" name="QR_Type" oncommand="QRCreator.setPrefs(1, \'QR_Type\', this.value);"/>\
@@ -167,12 +174,11 @@
 							</menupopup>\
 						</menu>\
 					</menupopup>\
-					<panel id="QRCreator-panel" type="arrow" flip="slide" consumeoutsideclicks="false" noautofocus="false" panelopen="true" orient="vertical" align="center" level="top">\
-					</panel>\
+					<panel id="QRCreator-panel" type="arrow" flip="slide" consumeoutsideclicks="false" noautofocus="false" orient="vertical" align="center" level="top"/>\
 				</toolbarpalette>\
 			</overlay>';
 			overlay = "data:application/vnd.mozilla.xul+xml;charset=utf-8," + encodeURI(overlay);
-			window.userChrome_js.loadOverlay(overlay, QRCreator);
+			window.userChrome_js.loadOverlay(overlay, this);
 
 			//================== CSS ==================
 			var css = '\
@@ -219,51 +225,65 @@
 					padding: 0 !important;\
 					margin: 0 !important;\
 				}\
-				#QRCreator-icon dropmarker {\
-					display: none !important;\
-				}\
 				';
 			}
 			this.style = addStyle(css);
+		},
+
+		launch: function(type) {
+			this.openPanel();
+			this.panelLoading();
+			var cont = window.content || this.Content;
+			var target_data = "", altText;		
+			if (!type) {
+				if (type === 0)
+					var type = 0;
+				else if (cont.getSelection().toString().length != 0)
+					var type = 1;
+				else if ((cont.document.location == "about:blank" || cont.document.location == "about:newtab"))
+					var type = 2;
+				else
+					var type = 0;
+			}
+			switch (type) {
+				case 0:
+					target_data = cont.document.location;
+					altText = {type: 0, text: "QR码内容[网址]"};
+					break;
+				case 1:
+					target_data = cont.getSelection().toString();
+					altText = {type: 1, text: "QR码内容[文本]"};
+					break;
+				case 2:
+					target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
+					altText = {type: 1, text: "QR码内容[文本]"};
+					break;
+			}
+			setTimeout(function(){ QRCreator.QRCommand(target_data, altText); }, 180);
 		},
 
 		iconClick: function(aEvent) {
 			if(aEvent.target != aEvent.currentTarget) return;
 			aEvent.stopPropagation();
 			aEvent.preventDefault();
-
-			var cont = window.content || this.Content;
-			var target_data = "", altText;
 			if (aEvent.button == 0) {
-				this.openPanel();
-				if (cont.getSelection().toString().length != 0) {
-					target_data = cont.getSelection().toString();
-					altText = {type: 1, text: "QR码内容[文本]", data: target_data};
-				} else if ((cont.document.location == "about:blank" || cont.document.location == "about:newtab")) {
-					this.QRprompt();
-					return;
-				} else {
-					target_data = cont.document.location;
-					altText = {type: 0, text: "QR码内容[网址]", data: target_data}
-				}
-				setTimeout(function(){ QRCreator.QRCommand(target_data, altText); }, 180);
+				this.launch();
 			}
 		},
 
-		QRprompt: function() {
-			var target_data = prompt("请输入文本创建一个QR码（长度不超过250字节）：", "");
-			var altText = {type: 1, text: "QR码内容[文本]", data: target_data};
-			this.openPanel();
-			setTimeout(function(){ QRCreator.QRCommand(target_data, altText); }, 180);
+		openPanel: function() {
+			var panel = $("QRCreator-panel");
+			//清除内容
+			if(panel.hasChildNodes()) panel.innerHTML = "";
+			panel.removeAttribute("width");
+			panel.removeAttribute("height"); 
+			panel.openPopup(this.icon, "bottomcenter topleft", 0, 0, false, null, null);
 		},
 
-		openPanel: function() {
-			//清除内容
-			if($("QRCreator-panel").hasChildNodes()) $("QRCreator-panel").innerHTML = "";
-			$("QRCreator-panel").removeAttribute("width");
-			$("QRCreator-panel").removeAttribute("height"); 
+		panelLoading: function() {
+			//加载
+			var panel = $("QRCreator-panel");
 
-			$("QRCreator-panel").openPopup(this.icon, "bottomcenter topleft", 0, 0, false, null, null);
 			var image = $C("image", {
 				id: "QRCreator_panel_loadingImage",
 				src: "data:image/png;base64,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",
@@ -274,21 +294,25 @@
 				align: "center",
 			});
 			var hbox = $C("hbox", {});
+
 			hbox.appendChild(image);
 			hbox.appendChild(label);
 
-			$("QRCreator-panel").appendChild(hbox);
+			panel.appendChild(hbox);
 		},
 
-		showImage: function(src, altText) {
-			//if (!$("QRCreator-panel").getAttribute("panelopen")) this.openPanel();
-			if($("QRCreator-panel").hasChildNodes()) $("QRCreator-panel").innerHTML = "";
+		showImage: function(src, target_data, altText) {
+			//展示图片
+			var panel = $("QRCreator-panel");
+			
+			if (!panel.getAttribute("panelopen")) this.openPanel();
+			if(panel.hasChildNodes()) panel.innerHTML = "";
 			var hbox, label, image;
 			var image = $C("image", {
 				id: "QRCreator_panel_QRImage",
 				src: src,
 			});
-			$("QRCreator-panel").appendChild(image);
+			panel.appendChild(image);
 
 			hbox = $C("hbox", {align: "center"});
 			label  = $C("label", {
@@ -297,25 +321,19 @@
 				align: "center",
 			});
 			hbox.appendChild(label);
-			$("QRCreator-panel").appendChild(hbox);
+			panel.appendChild(hbox);
 
 			hbox = $C("hbox", {align: "center"});
 			label  = $C("label", {
 				class: "QRCreator_panel_QRImage_label text-link",
 				//截取前30位
-				value: altText.data.toString().length > 30 ? 
-					altText.data.toString().substr(0, 30) + "..." : 
-					altText.data.toString() || "",
-				href: altText.type === 0 ? 
-					altText.data : 
-					"http://www.baidu.com/s?wd=" + altText.data,
-				tooltiptext: altText.type === 0 ? 
-					"打开网页" : 
-					"搜索选取文字",
+				value: cutString(target_data.toString(), 30),
+				href: altText.type === 0 ? target_data : "http://www.baidu.com/s?wd=" + target_data.data,
+				tooltiptext: altText.type === 0 ? "打开网页" :  "搜索选取文字",
 				align: "center",
 			});
 			hbox.appendChild(label);
-			$("QRCreator-panel").appendChild(hbox);
+			panel.appendChild(hbox);
 		},
 
 		changeStatus: function() {
@@ -323,13 +341,6 @@
 				$("QRCreator_Icon_Pos").childNodes[this.Icon_Pos].setAttribute('checked', 'true');
 			if($("QRCreator_QR_Type")) 
 				$("QRCreator_QR_Type").childNodes[this.QR_Type].setAttribute('checked', 'true');
-		},
-
-		observe : function (aSubject, aTopic, aData) {
-			if (aTopic == "xul-overlay-merged") {
-				this.changeStatus();
-				log("界面加载完毕");
-			}
 		},
 
 		//================================ 主函数 ================================
@@ -340,7 +351,7 @@
 			else if (this.QR_Type === 1) 
 				var src = this.generateAddress(target_data);
 
-			this.showImage(src, altText)
+			this.showImage(src, target_data, altText)
 			//log('二维码：' + src);
 		},
 
@@ -1905,14 +1916,6 @@
 		return el;
 	}
 
-	function _$C(name1, name2, attr) {
-		var el1 = document.createElement(name1),
-			el2 = document.createElement(name2);
-		if (attr) Object.keys(attr).forEach(function(n) el1.setAttribute(n, attr[n]));
-		el2.appendChild(el1);
-		return el2;
-	}
-
 	function addStyle(css) {
 		var pi = document.createProcessingInstruction(
 			'xml-stylesheet',
@@ -1923,6 +1926,11 @@
 	function alert(aString, aTitle) {
 		Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService)
 			.showAlertNotification("", aTitle || "QR", aString, false, "", null);
+	}
+
+	function cutString(str, len) {
+		if (str.length > len) return str.substr(0, len) + "...";
+		else return str;
 	}
 
 	QRCreator.init();
