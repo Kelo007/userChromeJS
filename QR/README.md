@@ -8,10 +8,10 @@ QR.uc.js
  - 按钮默认在地址栏。左键：打开面板 右键：打开功能&设置菜单
  - 在线生成二维码，可以看注释修改喜欢的网站。  
  - 调用命令（用于鼠标手势、KeyChanger等）：  
-  - QRCreator.launch() 自动
-  - QRCreator.launch(0) 获取网页二维码
-  - QRCreator.launch(1) 获取选取内容二维码
-  - QRCreator.launch(2) 获取自定二维码
+  - QRCreator.run() 自动
+  - QRCreator.run(0) 获取网页二维码
+  - QRCreator.run(1) 获取选取内容二维码
+  - QRCreator.run(2) 获取自定二维码
 
 ###图片  
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/QR/img/QR 1.png "QR 1")   

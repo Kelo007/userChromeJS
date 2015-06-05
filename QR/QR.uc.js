@@ -158,7 +158,7 @@
 				xmlns:html="http://www.w3.org/1999/xhtml">\
 				<toolbarpalette id="mainPopupSet">\
 					<menupopup id="QRCreator-popup" position="after_start">\
-					<menuitem label="自定文字" tooltiptext="输入文字创建二维码" oncommand="QRCreator.launch(2);"/>\
+					<menuitem label="自定文字" tooltiptext="输入文字创建二维码" oncommand="QRCreator.run(2);"/>\
 						<menu label="生成方式">\
 							<menupopup id="QRCreator_QR_Type">\
 								<menuitem type="radio" value="0" label="本地生成" name="QR_Type" oncommand="QRCreator.setPrefs(1, \'QR_Type\', this.value);"/>\
@@ -230,7 +230,7 @@
 			this.style = addStyle(css);
 		},
 
-		launch: function(type) {
+		run: function(type) {
 			this.openPanel();
 			this.panelLoading();
 			var cont = window.content || this.Content;
@@ -267,7 +267,7 @@
 			aEvent.stopPropagation();
 			aEvent.preventDefault();
 			if (aEvent.button == 0) {
-				this.launch();
+				this.run();
 			}
 		},
 
