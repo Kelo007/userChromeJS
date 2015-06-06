@@ -328,7 +328,7 @@
 				class: "QRCreator_panel_QRImage_label text-link",
 				//截取前30位
 				value: cutString(target_data.toString(), 30),
-				href: altText.type === 0 ? target_data : "http://www.baidu.com/s?wd=" + target_data.data,
+				href: altText.type === 0 ? target_data : "http://www.baidu.com/s?wd=" + target_data,
 				tooltiptext: altText.type === 0 ? "打开网页" :  "搜索选取文字",
 				align: "center",
 			});
