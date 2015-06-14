@@ -14,10 +14,12 @@ QR.uc.js
   - QRCreator.run(2) 获取自定二维码
 
 ###图片  
-![](https://github.com/GH-Kelo/userChromeJS/raw/master/QR/img/QR 1.png "QR 1")   
-![](https://github.com/GH-Kelo/userChromeJS/raw/master/QR/img/QR 2.png "QR 2")   
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/QR/img/QR 1.png "界面")   
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/QR/img/QR 2.png "右键菜单")   
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/QR/img/QR 3.png "图片右键菜单")   
 
 ###更新记录    
+ - 2015.6.14 0.0.4 Update.增加下载图片功能  
  - 2015.6.05 0.0.3 Update.
  - 2015.5.24 0.0.2 Update.完善界面  
  - 2015.5.23 0.0.1 Create.
