@@ -34,6 +34,10 @@
 				//==== CSS选择器 ====
 				//可能会变
 				element: "div[class='crayon-line'][id|='crayon']",
+				//get: function(doc, site) {
+					//return doc.querySelector(site.element).innerHTML.match(/((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g);
+
+				//},
 				//==== 下载地址 可选 ====
 				downloadURL: "http://www.firefoxfan.com/goagentip/proxy.ini",
 			},
@@ -279,7 +283,7 @@
 				promise;
 			switch (action) {
 				case "get":
-					if ((!site && site != 0) || site instanceof Array) promise = this.get_all(site);
+					if (site == null || site instanceof Array) promise = this.get_all(site);
 					else promise = this.get(site);
 					promise.then(res => {
 						console.log(res);
@@ -307,14 +311,28 @@
 			return this.getDOM(_site.url).then(
 				function onFulfill(doc) {
 					var ip = [], errText = "";
-					if (_site.element) {
-						try {
-							ip = doc.querySelector(_site.element).innerHTML.match(getGoaIP.regex);
+					try {
+						if (_site.element) {
+							// 分割逗号，循环处理
+							var els = _site.element.split(/[,，]/);
+							ip = Array.prototype.map.call(els, elt => {
+								return doc.querySelector(elt).innerHTML.match(getGoaIP.regex);
+							});
+							//for (let i in els) {
+							//	if(!els[i]) continue;
+							//	ip.push(doc.querySelector(els[i]).innerHTML.match(getGoaIP.regex));
+							//}
+							
 							// 使用apply简单处理二维数组。 e.g. [1, 2, [3, 4], 5] to [1, 2, 3, 4, 5]
 							ip = Array.concat.apply(ip, ip);
-						} catch (err) {
-							errText = err;
 						}
+						if (_site.get && typeof _site.get == "function") {
+							ip = ip.concat(_site.get(doc, _site));
+							// 使用apply简单处理二维数组。 e.g. [1, 2, [3, 4], 5] to [1, 2, 3, 4, 5]
+							ip = Array.concat.apply(ip, ip);
+						}
+					} catch (err) {
+							errText = err;
 					}
 					return {
 						err: errText ? site + "：" + errText : "",
@@ -325,7 +343,7 @@
 					};
 				}, 
 				function onReject(aReason) {
-					console.error(aReason);
+					console.error(site + "：" + aReason);
 					return {
 						err: site + "：" + aReason,
 						msg: "",
