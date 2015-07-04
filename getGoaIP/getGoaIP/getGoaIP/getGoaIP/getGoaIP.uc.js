@@ -9,6 +9,7 @@
 // @startup	window.getGoaIP.init();
 // @shutdown	window.getGoaIP.onDestroy();
 // @optionsURL	about:config?filter=userChromeJS.getGoaIP.
+// @version	2015.7.04 0.0.3 更新
 // @version	2015.7.03 0.0.2 更新
 // @version	2015.5.30 0.0.1 Create.
 // ==/UserScript==
@@ -70,9 +71,11 @@
 		regex: /((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g,
 		//=============== 状态信息 ===============
 		status: {
-			err: "出错了：",
-			suc: "成功获取IP：",
+			neterrr: "网络错误",
+			nettimeout: "网络请求超时",
 		},
+		//=============== 请求超时时间 ===============
+		timeout: 5000,
 		//================================ 设置结束 ================================
 		get prefs() {
 			delete this.prefs;
@@ -274,19 +277,16 @@
 			var action = action || "get",
 				site = site,
 				promise;
-			//if (typeof site == "string") site = this.sites[site];
 			switch (action) {
 				case "get":
-					if (!site)
-						promise = this.get_all();
-					else
-						promise = this.get(site);
-					promise.then(
-						function onFulfill(res) {
-							// ￣.￣ 太费脑子了
-							alert((!!res.msg && !!res.err ? cutString(res.msg, 50) + "\n" + res.err : cutString(res.msg, 50) + res.err) + (!!res.msg ? "\n点击复制全部IP"  : ""), 
-								"getGoaIP", !!res.msg ? res.msg : null, !!res.msg ? getGoaIP : null);
-					}, Cu.reportError);
+					if ((!site && site != 0) || site instanceof Array) promise = this.get_all(site);
+					else promise = this.get(site);
+					promise.then(res => {
+						console.log(res);
+						// ￣.￣ 太费脑子了
+						alert((!!res.msg && !!res.err ? cutString(res.msg, 50) + "\n" + res.err : cutString(res.msg, 50) + res.err) + (!!res.msg ? "\n点击复制全部IP"  : ""), 
+							"getGoaIP", !!res.msg ? res.msg : null, !!res.msg ? getGoaIP : null);
+					}).catch(Cu.reportError);
 					break;
 				case "download": 
 					alert("download 开发中...");
@@ -302,56 +302,64 @@
 			else if (typeof site == "number") var _site = this.sites[Object.keys(this.sites)[site]];
 			// 强行转换site为键值
 			site = getKey(this.sites, site);
+			// 缺少一个就return
+			if (!site || !_site) return;
 			return this.getDOM(_site.url).then(
 				function onFulfill(doc) {
+					var ip = [], errText = "";
 					if (_site.element) {
 						try {
-							var ip = doc.querySelector(_site.element).innerHTML.match(getGoaIP.regex);
-							// 使用apply处理多维数组。 e.g. [1, 2, [3, 4], 5] to [1, 2, 3, 4, 5]
+							ip = doc.querySelector(_site.element).innerHTML.match(getGoaIP.regex);
+							// 使用apply简单处理二维数组。 e.g. [1, 2, [3, 4], 5] to [1, 2, 3, 4, 5]
 							ip = Array.concat.apply(ip, ip);
 						} catch (err) {
-							return {
-								err: site + "：" + err,
-								msg: "",
-								site: site,
-								_site: _site,
-							};
+							errText = err;
 						}
-						return {
-							err: "",
-							msg: ip.join("|"),
-							site: site,
-							_site: _site,
-						};
 					}
+					return {
+						err: errText ? site + "：" + errText : "",
+						msg: ip.join("|") || "",
+						site: site,
+						_site: _site,
+						data: [],
+					};
 				}, 
 				function onReject(aReason) {
 					console.error(aReason);
-					return new Error(aReason);
+					return {
+						err: site + "：" + aReason,
+						msg: "",
+						site: site,
+						_site: _site,
+						data: [],
+					};
 			});
 		},
 
 		// 返回promise
 		get_all: function(sites) {
-			var sites = sites || this.sites;
-			var promises = [];
-			for (let i in sites) promises.push(this.get(i));
-			return Promise.all(promises).then(
-				function onFulfill(res) {
-					var sucText = [], errText = [], alertText = "";
-					// 组合一下再返回
-					for (let i in res) {
-						if (!res[i]) continue;
-						else if (res[i].err) errText.push(res[i].err);
-						else sucText.push(res[i].msg);
-					}
-					return {
-						err: errText.join("\n"),
-						msg: sucText.join("|"),
-						site: res.site,
-						_site: res._site,
-					};
-			}, Cu.reportError);
+			// 只接受可迭代对象（目前支持Array），无则为 Object.keys(this.sites)
+			var sites = sites || Object.keys(this.sites);
+			return Promise.all(sites.map(site => {
+				return this.get(site);
+			})).then(res => {
+				var sucText = [], errText = [], sites = [], _sites = [];
+				// 组合一下再返回
+				for (let i in res) {
+					if (!res[i]) continue;
+					else if (res[i].err) errText.push(res[i].err);
+					else if (res[i].msg) sucText.push(res[i].msg);
+					sites.push(res[i].site);
+					_sites.push(res[i]._site);
+				}
+				return {
+					err: errText.join("\n"),
+					msg: sucText.join("|"),
+					sites: sites,
+					_sites: _sites,
+					data: res,
+				};
+			}).catch(Cu.reportError);
 		},
 
 		// 返回promise
@@ -367,10 +375,14 @@
 						resolve(doc);
 					}
 				};
-				xhr.onerror = function(err) {
-					console.error(err);
-					reject(err);
+				xhr.onerror = function() {
+					reject(getGoaIP.status.neterrr);
 				};
+				xhr.timeout = getGoaIP.timeout;
+				xhr.ontimeout = function() {
+					reject(getGoaIP.status.nettimeout);
+				};
+
 			});
 		},
 
@@ -547,6 +559,7 @@
 
 	function getKey(obj, prop) {
 		if (typeof prop == "string") return prop;
+		else if (typeof prop == "number") return Object.keys(obj)[prop];
 		for (var i in obj) {
 			if (obj[i] === prop) {
 				prop = i;

@@ -9,6 +9,7 @@ getGoaIP.uc.js
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/getGoaIP/getGoaIP/getGoaIP/img/getGoaIP2.png "getGoaIP2")  
 
 ###更新记录    
+ - 2015.7.04 0.0.3 更新
  - 2015.7.03 0.0.2 更新
   - 1）重写大部分代码
   - 2）使用Promise对象
