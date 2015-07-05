@@ -19,7 +19,7 @@ getGoaIP.uc.js
     get: "div[class='crayon-line'][id|='crayon']",
     // 自定义function doc: 该网站document site: 即自身obj
     get: function(doc, site) {
-    	return doc.querySelector(site.element).innerHTML.match(/((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g);
+    	return doc.querySelector("div[class='crayon-line'][id|='crayon']").innerHTML.match(/((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g);
      },
  // ————————————
  // download:
@@ -51,7 +51,7 @@ getGoaIP.uc.js
   - 获取规则一、规则二的IP
     - getGoaIP.run("get", [0, 1]); | getGoaIP.run("get", ["firefoxfan", "honglingjin"]);
   - 下载规则一IP
-    - getGoaIP.run("download", 1); | getGoaIP.run("get", "firefoxfan");
+    - getGoaIP.run("download", 1); | getGoaIP.run("download", "firefoxfan");
 
 ###图片  
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/img/getGoaIP.png "getGoaIP")  
