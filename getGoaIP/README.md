@@ -54,8 +54,8 @@ getGoaIP.uc.js
     - getGoaIP.run("download", 1); | getGoaIP.run("get", "firefoxfan");
 
 ###图片  
-![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/getGoaIP/getGoaIP/getGoaIP/img/getGoaIP.png "getGoaIP")  
-![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/getGoaIP/getGoaIP/getGoaIP/img/getGoaIP2.png "getGoaIP2")  
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/img/getGoaIP.png "getGoaIP")  
+![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/img/getGoaIP2.png "getGoaIP2")  
 
 ###更新记录    
  - 2015.7.05 0.0.4 更新
