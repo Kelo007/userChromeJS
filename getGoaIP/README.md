@@ -5,7 +5,7 @@ getGoaIP.uc.js
  - 还未经各站长同意，若不允许，本人无条件删除。  
 
 ###说明  
-##<a name="code">编写规则
+####<a name="code">编写规则
 ```javascript
  // url(必须):
  // 描述：网站网址
@@ -38,7 +38,7 @@ getGoaIP.uc.js
 ```
 
 
-###自定义命令
+####自定义命令
  - 用于鼠标手势、KeyChanger等
   - getGoaIP.run(action, site);
     - action String
