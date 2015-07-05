@@ -9,6 +9,7 @@
 // @startup	window.getGoaIP.init();
 // @shutdown	window.getGoaIP.onDestroy();
 // @optionsURL	about:config?filter=userChromeJS.getGoaIP.
+// @version	2015.7.05 0.0.4 更新
 // @version	2015.7.04 0.0.3 更新
 // @version	2015.7.03 0.0.2 更新
 // @version	2015.5.30 0.0.1 Create.
@@ -25,57 +26,89 @@
 	var getGoaIP = {
 		//================================ 设置 ================================
 		//================== 自定义网站 ==================
+		// 编写规则
+		///**********************************************************************************
+		/**********************************************************************************
+		 * url(必须):
+		 * 描述：网站网址
+		 * 类型：String
+		 * -------------------------------
+		 * get:
+		 * 描述：一个CSS选择器（通过innerHTML查找IP）或一个自定义function，以数组形式返回IP。
+		 * 类型：String | Function
+		 * e.g.
+		 * // CSS选择器
+		 * get: "div[class='crayon-line'][id|='crayon']",
+		 * // 自定义function doc: 该网站document site: 即自身obj
+		 * get: function(doc, site) {
+		 * 	return doc.querySelector(site.element).innerHTML.match(/((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g);
+		 * },
+		 * -------------------------------
+		 * download:
+		 * 描述：一个下载地址或字符串"get"或自定义function。
+		 * 类型：String | Function
+		 * e.g.
+		 * // 下载该地址内容
+		 * download: "http://www.firefoxfan.com/goagentip/proxy.ini",
+		 * // 将get的ip以txt文件下载下来
+		 * download: "get",
+		 * // 自定义function doc: 该网站document site: 即自身obj
+		 * download: function(doc, site) {
+		 * 	//do something
+		 * },
+		 * -------------------------------
+		 *************************************************************************************/
 		sites: {
 			//==== 来自 火狐范 免费 IP ====
 			//感谢 火狐范
 			"firefoxfan": {
-				//==== 网站 url ====
+				// 网站 url 
 				url: "http://www.firefoxfan.com/firefox-gaogent/goagent-ip.html",
-				//==== CSS选择器 ====
-				//可能会变
-				element: "div[class='crayon-line'][id|='crayon']",
+				// CSS选择器
+				get: "div[class='crayon-line'][id|='crayon']",
 				//get: function(doc, site) {
 					//return doc.querySelector(site.element).innerHTML.match(/((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g);
-
 				//},
-				//==== 下载地址 可选 ====
-				downloadURL: "http://www.firefoxfan.com/goagentip/proxy.ini",
+				// 下载
+				download: "http://www.firefoxfan.com/goagentip/proxy.ini",
 			},
 			"honglingjin": {
-				//==== 网站 url ====
 				url: "http://www.honglingjin.ga/",
-				//==== CSS选择器 ====
-				//可能会变
-				element: ".header-banner > div:nth-child(3)",
-				//==== 下载地址 可选 ====
-				//下载为host
-				downloadURL: "http://www.honglingjin.ga/hosts/hosts.zip",
+				get: ".header-banner > div:nth-child(3)",
+				download: "http://www.honglingjin.ga/hosts/hosts.zip",
 			},
 			"ruooo": {
-				//==== 网站 url ====
 				url: "http://www.ruooo.com/VPS/704.html",
-				//==== 自定义callback ====
-				//== site 即自身obj ==
-				//== document 为网页 DOM ==
-				//== 新手 不建议自定义 ==
-				//自定义 获取IP callback
-				//callback_get: function(site, document) {},
-				//自定义 下载 callback
-				callback_download: function(site, document) {
-					var downloadURL = document.querySelector(".entry-content > p:nth-child(7) > span:nth-child(1) > a:nth-child(1)").innerHTML;
+				download: function(doc, site) {
+					var downloadURL = doc.querySelector(".entry-content > p:nth-child(7) > span:nth-child(1) > a:nth-child(1)").innerHTML;
 					//== 获取提取码 ==
 					//== 正则来自 panlink 感谢 jasonshaw ==
-					downloadURL += "#" + document.querySelector(".entry-content > p:nth-child(7) > span:nth-child(1)").innerHTML
+					downloadURL += "#" + doc.querySelector(".entry-content > p:nth-child(7) > span:nth-child(1)").innerHTML
 						.match(/\s*(提取密碼|提取密码|提取码|提取碼|提取|密碼|密码|百度|百度云|云盘|360云盘|360云|360yun|yun)[:：]?\s*(<[^>]+>)?\s*([0-9a-zA-Z]{4,})\s*/)[3];
 					gBrowser.addTab(downloadURL);
 				},
+			},
+			"ccav1": {
+				url: "http://www.ccav1.com/goagent.html/comment-page-1",
+				get: "#ds-hot-posts ul > li:last-child",
+				download: "get",
+			},
+			"07net01": {
+				url: "http://www.07net01.com/2015/04/814407.html",
+				get: ".article-content > p:nth-child(4)",
+				download: "get",
+			},
+			"anotherhome": {
+				url: "https://www.anotherhome.net/1573",
+				get: ".article-content > p:nth-child(32),.article-content > p:nth-child(33)",
+				download: "get",
 			},
 		},
 		//=============== ip 正则 ===============
 		regex: /((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g,
 		//=============== 状态信息 ===============
 		status: {
-			neterrr: "网络错误",
+			neterr: "网络错误",
 			nettimeout: "网络请求超时",
 		},
 		//=============== 请求超时时间 ===============
@@ -84,6 +117,18 @@
 		get prefs() {
 			delete this.prefs;
 			return this.prefs = Services.prefs.getBranch("userChromeJS.getGoaIP.");
+		},
+
+		get file() {
+			let aFile;
+			aFile = Services.dirsvc.get("UChrm", Ci.nsILocalFile);
+			aFile.appendRelativePath("lib");
+			aFile.appendRelativePath("_getGoaIP.js");
+			try {
+				this._modifiedTime = aFile.lastModifiedTime;
+			} catch (e) {}
+			delete this.file;
+			return this.file = aFile;
 		},
 
 		init: function() {
@@ -246,7 +291,7 @@
 					label: "获取IP",
 					class: "getGoaIP_get",
 					onclick: "getGoaIP.run('get','" + i + "')",
-					disabled: site.element || site.callback_get ? false : true,
+					disabled: !!site.get ? false : true,
 				});
 				menupopup.appendChild(menuitem);
 
@@ -254,7 +299,7 @@
 					label: "下载",
 					class: "getGoaIP_download",
 					onclick: "getGoaIP.run('download','" + i + "')",
-					disabled: site.downloadURL || site.callback_download ? false : true,
+					disabled: !!site.download ? false : true,
 				});
 				menupopup.appendChild(menuitem);
 
@@ -278,9 +323,7 @@
 		},
 
 		run: function(action, site) {
-			var action = action || "get",
-				site = site,
-				promise;
+			var action = action || "get", site = site, promise;
 			switch (action) {
 				case "get":
 					if (site == null || site instanceof Array) promise = this.get_all(site);
@@ -290,12 +333,14 @@
 						// ￣.￣ 太费脑子了
 						alert((!!res.msg && !!res.err ? cutString(res.msg, 50) + "\n" + res.err : cutString(res.msg, 50) + res.err) + (!!res.msg ? "\n点击复制全部IP"  : ""), 
 							"getGoaIP", !!res.msg ? res.msg : null, !!res.msg ? getGoaIP : null);
+						return res;
 					}).catch(Cu.reportError);
 					break;
 				case "download": 
-					alert("download 开发中...");
+					promise = this.download(site);
 					break;
 			}
+			return promise;
 		},
 
 		// 返回promise
@@ -312,27 +357,25 @@
 				function onFulfill(doc) {
 					var ip = [], errText = "";
 					try {
-						if (_site.element) {
+						if (_site.get && typeof _site.get == "string") {
 							// 分割逗号，循环处理
-							var els = _site.element.split(/[,，]/);
-							ip = Array.prototype.map.call(els, elt => {
-								return doc.querySelector(elt).innerHTML.match(getGoaIP.regex);
+							var els = _site.get.split(/[,，]/);
+							Array.prototype.forEach.call(els, elt => {
+								let res = doc.querySelector(elt).innerHTML.match(getGoaIP.regex)
+								if (res && res.length != 0) ip = ip.concat(res);
 							});
 							//for (let i in els) {
 							//	if(!els[i]) continue;
 							//	ip.push(doc.querySelector(els[i]).innerHTML.match(getGoaIP.regex));
 							//}
-							
-							// 使用apply简单处理二维数组。 e.g. [1, 2, [3, 4], 5] to [1, 2, 3, 4, 5]
-							ip = Array.concat.apply(ip, ip);
 						}
 						if (_site.get && typeof _site.get == "function") {
 							ip = ip.concat(_site.get(doc, _site));
-							// 使用apply简单处理二维数组。 e.g. [1, 2, [3, 4], 5] to [1, 2, 3, 4, 5]
-							ip = Array.concat.apply(ip, ip);
 						}
+						// 使用apply简单处理二维数组。 e.g. [1, 2, [3, 4], 5] to [1, 2, 3, 4, 5]
+						if (ip.length != 0) ip = Array.concat.apply(ip, ip);
 					} catch (err) {
-							errText = err;
+						errText = err;
 					}
 					return {
 						err: errText ? site + "：" + errText : "",
@@ -365,8 +408,8 @@
 				// 组合一下再返回
 				for (let i in res) {
 					if (!res[i]) continue;
-					else if (res[i].err) errText.push(res[i].err);
-					else if (res[i].msg) sucText.push(res[i].msg);
+					if (res[i].err) errText.push(res[i].err);
+					if (res[i].msg) sucText.push(res[i].msg);
 					sites.push(res[i].site);
 					_sites.push(res[i]._site);
 				}
@@ -394,66 +437,42 @@
 					}
 				};
 				xhr.onerror = function() {
-					reject(getGoaIP.status.neterrr);
+					reject(getGoaIP.status.neterr);
 				};
 				xhr.timeout = getGoaIP.timeout;
 				xhr.ontimeout = function() {
 					reject(getGoaIP.status.nettimeout);
 				};
-
 			});
 		},
 
-		//================================ callback 集合 ================================
-		/*getIP: function(site, document) {
-			var that = getGoaIP, ip, err;
-			if (site.element) {
-				try {
-					ip = document.querySelector(site.element).innerHTML.match(that.regex);
-				} catch (e) {
-					err = that.status.err + "\n" + e;
-				}
-				that.altText += site.name + "  " + (err || that.status.suc);
-				if (ip) {
-					that.altText += "\t" + cutString(ip.join("|"), 50) + "\n";
-					that.ip = that.ip.concat(ip)
-				}
-			} 
-			that.finishedSiteNum ++;
-
-			if (that.finishedSiteNum == countObj(that.sites)) {
-				var cookie = that.ip.join("|");
-				alert(that.altText + "点击复制全部IP", "getGoaIP", cookie, that);
-				that.reset();
+		download: function(site) {
+			// _site为object类型
+			if (typeof site == "object") var _site = site;
+			else if (typeof site == "string") var _site = this.sites[site];
+			else if (typeof site == "number") var _site = this.sites[Object.keys(this.sites)[site]];
+			// 强行转换site为键值
+			site = getKey(this.sites, site);
+			// 缺少一个就return
+			if (!site || !_site) return;
+			if (_site.download && _site.download === "get") {
+				return this.get(site).then(res => {
+					saveURL("data:text/plain;charset=UTF-8;base64," + btoa(unescape(encodeURIComponent(!!res.msg ? res.msg : res.err))), "getGoaIP.txt", null, null, null, null, window.document);
+				});
+			}
+			else if (_site.download && typeof _site.download == "string") {
+				return saveURL(_site.download, null, null, null, null, null, window.document);
+			}
+			else if (_site.download && typeof _site.download == "function") {
+				return this.getDOM(_site.url).then(
+					function onFulfill(doc) {
+						_site.download(doc, _site);
+					},
+					function onReject(aReason) {
+						console.error(site + "：" + aReason);
+					}).catch(Cu.reportError)
 			}
 		},
-
-		getGoaIP_get: function(site, document) {
-			var that = getGoaIP, ip, err, cookie;
-			if (!site.element) return;
-			try {
-				ip = document.querySelector(site.element).innerHTML.match(that.regex);
-			} catch (e) {
-				err = that.status.err + "\n" + e;
-			}
-			var text = site.name + "  " + (err || that.status.suc);
-			if (ip) {
-				cookie = ip.join("|");
-				text += "\t" + cutString(cookie, 50) + "\n";
-			}
-			alert(text + (!!cookie ? "点击复制全部IP"  : ""), "getGoaIP", !!cookie ? cookie : null, !!cookie ? that : null);
-		},
-
-		getGoaIP_download: function(site, document) {
-			var mainwin = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator).getMostRecentWindow("navigator:browser");
-			saveURL(site.downloadURL, null, null, null, null, null, mainwin.document);
-		},
-
-		reset: function() {
-			this.finishedSiteNum = 0;
-			this.ip = [];
-			this.altText = "";
-		},*/
 	};
 
 	// 来自 User Agent Overrider 扩展
