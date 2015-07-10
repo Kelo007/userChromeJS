@@ -109,14 +109,14 @@ var $C = (function() {
 		show: function(elt) {
 			let els = !!elt ? [elt] : this.els;
 			els.forEach(elt => {
-				elt.setAttribute("hidden", true);
+				elt.setAttribute("hidden", false);
 			});
 			return this;
 		},
 		hide: function(elt) {
 			let els = !!elt ? [elt] : this.els;
 			els.forEach(elt => {
-				elt.setAttribute("hidden", false);
+				elt.setAttribute("hidden", true);
 			});
 			return this;
 		},
