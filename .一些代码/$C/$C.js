@@ -1,33 +1,37 @@
 var $C = (function() {
-	var $C = function(obj) {
-		return new $C.fn.init(obj);
+	var $C = function(obj, context) {
+		return new $C.fn.init(obj, context);
 	}
 
 	$C.fn = $C.prototype = {
 		constructor: $C,
-		init: function(obj) {
+		init: function(obj, context) {
 			this.obj = obj;
-			this.eltIds = {};
-			if (!obj || obj.length == 0) {
+			this.context = context = context || window.document || null;
+			if (!obj || obj.length == 0 || !context) {
 				return this;
 			}
+			this.eltIds = {};
 			this.els = [].map.call(obj, prop => {
-				return this.create(prop);
+				return this.create(prop, context);
 			});
 			return this;
 		},
-		create: function(obj) {
+		create: function(obj, context) {
 			obj = obj || {};
+			context = context || null;
 			let id = obj.id || "";
 			let type = obj.type || "menuseparator";
 			let attrs = obj.attrs || {};
 			let events = obj.events || {};
 			let childs = obj.childs || [];
-			let elt = document.createElement(type);
-			[].forEach.call(attrs, (attr, key) => {
+			let elt = context.createElement(type);
+			Object.keys(attrs).forEach(key => {
+				let attr = attrs[key];
 				elt.setAttribute(key, attr);
 			});
-			[].forEach.call(events, (event, key) => {
+			Object.keys(events).forEach(key => {
+				let event = events[key];
 				if (typeof event == "function") {
 					let fn = "(" + event.toSource() + ").call(this, event);"
 					elt.setAttribute(key, fn);
@@ -35,7 +39,7 @@ var $C = (function() {
 			});
 			if (childs && childs.length != 0) {
 				[].forEach.call(childs, child => {
-					elt.appendChild(this.create(child));
+					elt.appendChild(this.create(child, context));
 				});
 			}
 			if (id) {

@@ -54,5 +54,30 @@ $C([{
 .show() // 将它显示
 .after(); //创建元素节点
 ```
+```js
+// 较复杂示例
+$C([{
+	type:"toolbarbutton",
+	attrs:{
+		type:"menu",
+		image:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqElEQVQ4ja1ObQuCMBi8XxsShCGMRBmJtiiSrCCQiP7q9Wkyn00d1MFxbzxjwD9g7h+GGLvjcHtTPup2Szvq64tWpQ917g0AoLr0tCp9qHNvAAD6/PS+6HZLO8rjgyHG7gPypmPedIzNHlTVUlUtY/OATJ8YotynMtLCeK+6XVoYzmVsdjWtSm+z3EdYqz2tSm+z3EdIMu2VbpdkmnMZq23JEOU+lX/CF5tmGfKU1HvcAAAAAElFTkSuQmCC"
+	},
+	events:{
+		oncommand:function() {
+			alert("run")
+		}
+  	},
+	childs:[{
+		type:"menupopup",
+		childs:[{
+			type:"menuitem",
+			attrs:{
+				label:"test"
+			}
+		}]   
+ 	 }]
+}])
+.append()
+```
 
 
