@@ -76,18 +76,18 @@ var $C = (function() {
 			}
 			this.eltIds = {};
 			this.els = [].map.call(obj, prop => {
-				return this.create(prop, context);
+				return this.create(prop);
 			});
 			return this;
 		},
-		create: function(obj, context) {
+		create: function(obj) {
 			obj = obj || {};
-			context = context || null;
 			let id = obj.id || "";
 			let type = obj.type || "menuseparator";
 			let attrs = obj.attrs || {};
 			let events = obj.events || {};
 			let childs = obj.childs || [];
+			let context = this.context || null;
 			let elt = context.createElement(type);
 			Object.keys(attrs).forEach(key => {
 				let attr = attrs[key];
@@ -102,7 +102,7 @@ var $C = (function() {
 			});
 			if (childs && childs.length != 0) {
 				[].forEach.call(childs, child => {
-					elt.appendChild(this.create(child, context));
+					elt.appendChild(this.create(child));
 				});
 			}
 			if (id) {

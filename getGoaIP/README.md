@@ -51,7 +51,7 @@ getGoaIP.uc.js
   - 获取规则一、规则二的IP
     - getGoaIP.run("get", [0, 1]); | getGoaIP.run("get", ["firefoxfan", "honglingjin"]);
   - 下载规则一IP
-    - getGoaIP.run("download", 1); | getGoaIP.run("download", "firefoxfan");
+    - getGoaIP.run("download", 0); | getGoaIP.run("download", "firefoxfan");
 
 ###图片  
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/getGoaIP/img/getGoaIP.png "getGoaIP")  

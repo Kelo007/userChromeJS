@@ -41,7 +41,7 @@
 		 * get: "div[class='crayon-line'][id|='crayon']",
 		 * // 自定义function doc: 该网站document site: 即自身obj
 		 * get: function(doc, site) {
-		 * 	return doc.querySelector(site.element).innerHTML.match(/((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g);
+		 * 	return doc.querySelector("div[class='crayon-line'][id|='crayon']").innerHTML.match(/((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))/g);
 		 * },
 		 * -------------------------------
 		 * download:
