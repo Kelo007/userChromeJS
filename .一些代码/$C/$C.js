@@ -1,113 +1,240 @@
 var $C = (function() {
-	var $C = function(obj, context) {
-		return new $C.fn.init(obj, context);
-	}
+	var slice = Array.prototype.slice,
+		concat = Array.prototype.concat,
+		push = Array.prototype.push,
+		indexOf = Array.prototype.indexOf,
+		hasOwn = Object.prototype.hasOwnProperty,
+		isArray = function(obj) {
+			return obj instanceof Array;
+		},
+		isObject = function(obj) {
+			return typeof obj === "object";
+		},
+		isString = function(obj) {
+			return typeof obj === "string";
+		},
+		isArraylike = function(obj) {
+			var length = "length" in obj && obj.length;
+			return isArray(obj) || length === 0 || typeof length === "number" && length > 0 && (length - 1) in obj;
+		},
+		each = function(obj, callback, context) {
+			if (isArraylike(obj)) {
+				for (let i = 0; i < obj.length; i++) {
+					callback.call(context || obj[i], i, obj[i]);
+				}
+			} else {
+				for (let i in obj) {
+					callback.call(context || obj[i], i, obj[i]);
+				}
+			}
+			return obj;
+		},
+		$ = function(selector, context) {
+			return (context || window.document).querySelectorAll(selector);
+		};
+
+	var $C = function(selector, context) {
+		return new $C.fn.init(selector, context);
+	};
 
 	$C.fn = $C.prototype = {
 		constructor: $C,
-		init: function(obj, context) {
-			this.obj = obj;
+		init: function(selector, context) {
+			this.selector = selector;
 			this.context = context = context || window.document || null;
-			if (!obj || obj.length == 0 || !context) {
+			if (!selector || !context) {
 				return this;
 			}
-			this.eltIds = {};
-			this.els = [].map.call(obj, prop => {
-				return this.create(prop);
-			});
+			if (isArray(selector)) {
+				each(selector, function(i, obj) {
+					push.call(this, this.createByObject(obj));
+				}, this);
+			}
+			if (isString(selector)) {
+				selector = selector.trim();
+				if (selector.charAt(0) === "<") {
+					push.call(this, this.createByHtml(selector));
+				} else {
+					push.call(this, this.createByString(selector));
+				}
+			}
+			if (selector instanceof NodeList || selector instanceof this.constructor) {
+				push.apply(this, slice.call(selector));
+			}
 			return this;
 		},
-		create: function(obj) {
+		// TODO
+		createByArray: function(arr) {},
+		createByObject: function(obj) {
 			obj = obj || {};
 			let id = obj.id || "";
-			let type = obj.type || "menuseparator";
+			let tag = obj.tag || "menuseparator";
 			let attrs = obj.attrs || {};
 			let events = obj.events || {};
 			let childs = obj.childs || [];
-			let context = this.context || null;
-			let elt = context.createElement(type);
-			Object.keys(attrs).forEach(key => {
-				let attr = attrs[key];
-				elt.setAttribute(key, attr);
+			let context = this.context;
+			let node = context.createElement(tag);
+			each(attrs, function(key, attr) {
+				node.setAttribute(key, attr);
 			});
-			Object.keys(events).forEach(key => {
-				let event = events[key];
+			each(events, function(key, event) {
 				if (typeof event == "function") {
 					let fn = "(" + event.toSource() + ").call(this, event);"
-					elt.setAttribute(key, fn);
+					node.setAttribute(key, fn);
 				}
 			});
-			if (childs && childs.length != 0) {
-				[].forEach.call(childs, child => {
-					elt.appendChild(this.create(child));
-				});
-			}
-			if (id) {
-				this.eltIds[id] = elt;
-			}
-			return elt;
+			each(childs, function(key, child) {
+				node.appendChild(this.createByObject(child));
+			});
+			return node;
 		},
-		show: function(elt) {
-			let els = !!elt ? [elt] : this.els;
-			els.forEach(elt => {
-				elt.setAttribute("hidden", false);
+		createByHtml: function(str) {
+			str = str || "";
+			str = str.replace(/[\n\t]/g, "");
+			let context = this.context;
+			let range = context.createRange();
+			let node = range.createContextualFragment(str);
+			return node;
+		},
+		createByString: function(str) {
+			let tag = str || "";
+			let context = this.context;
+			let node = context.createElement(tag);
+			return node;
+		},
+		show: function(node) {
+			let nodes = !!node ? [node] : this;
+			each(nodes, function(i, node) {
+				node.setAttribute("hidden", false);
 			});
 			return this;
 		},
-		hide: function(elt) {
-			let els = !!elt ? [elt] : this.els;
-			els.forEach(elt => {
-				elt.setAttribute("hidden", true);
+		hide: function(node) {
+			let nodes = !!node ? [node] : this;
+			each(nodes, function(i, node) {
+				node.setAttribute("hidden", true);
 			});
 			return this;
 		},
-		append: function(appendElt, elt) {
-			let els = !!elt ? [elt] : this.els;
-			appendElt = appendElt || this.$("nav-bar", window.document).element;
-			els.forEach(elt => {
-				appendElt.appendChild(elt);
+		// TODO
+		on: function() {},
+		attr: function() {},
+		prop: function() {},
+		appendTo: function(appendNode, node) {
+			let nodes = !!node ? [node] : this;
+			appendNode = appendNode || this.context.documentElement;
+			each(nodes, function(i, node) {
+				appendNode.appendChild(node);
 			});
 			return this;
 		},
-		before: function(beforeElt, elt) {
-			let els = !!elt ? [elt] : this.els;
-			beforeElt = beforeElt || this.$("nav-bar", window.document).element;
-			els.forEach(elt => {
-				beforeElt.parentNode.insertBefore(elt, beforeElt);
+		append: function(node, appendNode) {
+			appendNodes = appendNode || this;
+			each(appendNodes, function(i, appendNode) {
+				appendNodes.appendChild(node);
 			});
 			return this;
 		},
-		after: function(afterElt, elt) {
-			let els = !!elt ? [elt] : this.els;
-			afterElt = afterElt || this.$("nav-bar", window.document).element;
-			els.forEach(elt => {
-				afterElt.parentNode.insertBefore(elt, afterElt.nextSibling);
+		before: function(beforeNode, node) {
+			let nodes = !!node ? [node] : this;
+			beforeNode = beforeNode || this.context.documentElement;
+			each(nodes, function(i, node) {
+				beforeNode.parentNode.insertBefore(node, beforeNode);
 			});
 			return this;
 		},
-		$: function(selector, doc) {
-			var elt;
-			if (doc) {
-				elt = doc.getElementById(selector);
+		after: function(afterNode, node) {
+			let nodes = !!node ? [node] : this;
+			afterNode = afterNode || this.context.documentElement;
+			each(nodes, function(i, node) {
+				afterNode.parentNode.insertBefore(node, afterNode.nextSibling);
+			});
+			return this;
+		},
+		$: function(selector, context) {
+			var node;
+			if (context) {
+				node = $(selector, context);
+			} else {
+				let context = this.context;
+				if (!node) {
+					let fragment = context.createDocumentFragment();
+					each(this, function(i, node) {
+						fragment.appendChild(node);
+					});
+					node = $(selector, fragment);
+				}
+				if (!node) {
+					node = $(selector, context);
+				}
 			}
-			else if (selector in this.eltIds) {
-				elt = this.eltIds[selector]
-			}
-			else {
-				elt = document.getElementById(selector);
-			}
-			return {
-				show: () => this.show(elt),
-				hide: () => this.hide(elt),
-				append: (appendElt) => this.append(appendElt, elt),
-				before: (beforeElt) => this.before(beforeElt, elt),
-				after: (afterElt) => this.after(afterElt, elt),
-				element: elt
+			return this.pushStack(node);
+		},
+		pushStack: function(nodes) {
+			let ret = this.constructor(nodes || null);
+			ret.prevObject = this;
+			ret.context = this.context;
+			ret.selector = this.selector;
+			return ret;
+		},
+		end: function() {
+			return this.prevObject || this.constructor(null);
+		},
+		add: function(selector) {
+			return this.concat(slice.call(this.constructor(selector)));
+		},
+		push: function() {
+			let ret = this.pushStack(this),
+				args = slice.call(arguments);
+			push.apply(ret, args);
+			return ret;
+		},
+		concat: function(obj) {
+			if(isArray(obj) || isArraylike(obj)) {
+				return this.push.apply(this, slice.call(obj));
+			} else {
+				return this;
 			}
 		},
+		slice: function() {
+			let ret = this.pushStack();
+			push.apply(ret, slice.apply(this, arguments));
+			return ret;
+		},
+		each: function(callback) {
+			return each(this, callback);
+		},
+		// TODO
+		map: function() {},
+		every: function() {},
+		filter: function() {},
+		pop: function() {},
+		some: function() {},
+		sort: function() {},
+		// ...
 	};
-
+	$C.extend = $C.fn.extend = function(source, target, isDeep) {
+		target = target || this;
+		isDeep = isDeep || false;
+		for (let i in source) {
+			let copy = source[i];
+			if (isDeep && isObject(copy)) {
+				target[i] = $C.extend(target[i], copy, isDeep);
+			} else {
+				target[i] = copy;
+			}
+		}
+		return target;
+	};
+	$C.extend({
+		$: $,
+		each: each,
+		isArray: isArray,
+		isArraylike: isArraylike,
+		isObject: isObject,
+		isString: isString,
+		// TODO
+	});
 	$C.fn.init.prototype = $C.fn;
-
 	return (window.$C = $C);
 })();
