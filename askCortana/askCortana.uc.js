@@ -5,11 +5,11 @@
 // @include	main
 // ==/UserScript==
 (function() {
-	window.askCortana = ac = {
+	var ac = window.askCortana = {
 		// 延时
-		delay: 100,
+		_delay: 100,
 		// 循环次数，解决运行vbs可能未打开开始菜单问题
-		count: 5,
+		_count: 5,
 		get sysVersion() Services.sysinfo.getProperty("version").split(".")[0],
 		init: function() {
 			if (this.sysVersion != 10) {
@@ -30,12 +30,12 @@
 			str = str.replace(/[\n\t]/g, "");
 			var vbsText = '\
 				set ws=createobject("wscript.shell")\n\
-				for i=1 to ' + this.count + '\n\
+				for i=1 to ' + this._count + '\n\
 				ws.sendKeys "^{esc}"\n\
 				next\
 			';
 			var vbsFile = this.createTempFile(vbsText, 'popupMenu.vbs');
-			this.exec(vbsFile, []);
+			this.exec(vbsFile, [], true);
 			this.timer = setTimeout(() => {
 				if (document.hasFocus()) {
 					this.runCortana(str);
@@ -49,7 +49,7 @@
 				';
 				var vbsFile = this.createTempFile(vbsText, 'runCortana.vbs');
 				this.exec(vbsFile, []);
-			}, this.delay);
+			}, this._delay);
 		},
 		exec: function(path, args, blocking) {
 			if (typeof blocking == 'undefined') blocking = false;
