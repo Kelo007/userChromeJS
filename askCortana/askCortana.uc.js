@@ -8,6 +8,8 @@
 	window.askCortana = ac = {
 		// 延时
 		delay: 100,
+		// 循环次数，解决运行vbs可能未打开开始菜单问题
+		count: 5,
 		get sysVersion() Services.sysinfo.getProperty("version").split(".")[0],
 		init: function() {
 			if (this.sysVersion != 10) {
@@ -28,7 +30,9 @@
 			str = str.replace(/[\n\t]/g, "");
 			var vbsText = '\
 				set ws=createobject("wscript.shell")\n\
-				ws.sendKeys "^{esc}"\
+				for i=1 to ' + this.count + '\n\
+				ws.sendKeys "^{esc}"\n\
+				next\
 			';
 			var vbsFile = this.createTempFile(vbsText, 'popupMenu.vbs');
 			this.exec(vbsFile, []);
