@@ -18,7 +18,7 @@
 			var menu = document.getElementById("contentAreaContextMenu");
 			var menuitem = $C("menuitem", {
 				id: "askCortana",
-				class: "menu-iconic",
+				class: "menuitem-iconic",
 				label: "询问Cortana",
 				condition: "select",
 				onclick: "askCortana.runCortana(content.getSelection().toString())"
@@ -26,7 +26,7 @@
 			menu.appendChild(menuitem);
 			var menuitem = $C("menuitem", {
 				id: "Xiaoice",
-				class: "menu-iconic",
+				class: "menuitem-iconic",
 				label: "召唤小冰",
 				onclick: "askCortana.runXiaoice();"
 			});

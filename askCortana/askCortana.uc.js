@@ -11,7 +11,8 @@
 		// 循环次数，解决运行vbs可能未打开开始菜单问题 （360或其他杀软问题）
 		_popupmenucount: 5,
 		// Cortana目录（可从开始菜单中拖出），以profile为相对目录。可选
-		_path: "chrome\\Cortana.lnk",
+		// _path: "chrome\\Cortana.lnk",
+		_path: "",
 		get sysVersion() Services.sysinfo.getProperty("version").split(".")[0],
 		init: function() {
 			if (this.sysVersion != 10) {
@@ -20,7 +21,7 @@
 			var menu = document.getElementById("contentAreaContextMenu");
 			var menuitem = $C("menuitem", {
 				id: "askCortana",
-				class: "menu-iconic",
+				class: "menuitem-iconic",
 				label: "询问Cortana",
 				condition: "select",
 				onclick: "askCortana.runCortana(content.getSelection().toString())"
@@ -28,7 +29,7 @@
 			menu.appendChild(menuitem);
 			var menuitem = $C("menuitem", {
 				id: "Xiaoice",
-				class: "menu-iconic",
+				class: "menuitem-iconic",
 				label: "召唤小冰",
 				onclick: "askCortana.runXiaoice();"
 			});
