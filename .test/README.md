@@ -36,6 +36,7 @@ newDownloadPlus.uc.js
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.png "downloadPlus 设置")   
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/Hash 计算.png "Hash 计算")   
 ###更新记录  
+ - 2015.09.19 修复"另存为..."的一个错误
  - 2015.05.09 优化代码，新增"Hash 计算功能"。  
  - 2015.05.07 使用黒仪大螃蟹的最新"从硬盘中删除"代码，增加"下载面板显示下载速度"功能，改名为newDownloadPlus.uc.js。  
  - 2015.05.03 修复一些Bug，脚本开关无需重启了。  
