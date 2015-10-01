@@ -31,7 +31,6 @@
 	}
 	if (!window.Services) Cu.import("resource://gre/modules/Services.jsm");
 	if (!window.DownloadUtils) Cu.import("resource://gre/modules/DownloadUtils.jsm");
-	if (!window.DownloadIntegration) Cu.import("resource://gre/modules/DownloadIntegration.jsm");
 
 	var downloadPlus = {
 		get prefs() {
@@ -175,11 +174,12 @@
 						}
 					}, 200);
 					// 有延迟？
+					// store is null？
 					setTimeout(function() {
 						if (!type || type === "download_dontRemoveFinishedDownloads") {
 							self.dontRemoveFinishedDownloads(self.getPrefs(0, "download_dontRemoveFinishedDownloads", false));
 						}
-					}, 1000);
+					}, 2000);
 					break;
 				case "chrome://mozapps/content/downloads/unknownContentType.xul":
 					setTimeout(function() {
@@ -256,9 +256,8 @@
 					ignorekeys="true"\
 					title="downloadPlus 配置"\
 					onload="changeStatus();"\
-					buttons="accept,cancel,extra1,extra2"\
-					ondialogextra1="Resets(false);"\
-					ondialogextra2="Resets(true);"\
+					buttons="accept,cancel,extra1"\
+					ondialogextra1="feedBack();"\
 					windowtype="downloadPlus:Preferences">\
 					<prefpane id="main" flex="1">\
 						<preferences>\
@@ -286,27 +285,8 @@
 							<preference id="dontRemoveFinishedDownloads" type="bool" name="userChromeJS.downloadPlus.download_dontRemoveFinishedDownloads"/>\
 						</preferences>\
 						<script>\
-							function Resets(aBool) {\
-								$("new_Download").value = aBool;\
-								$("new_Download_popups").value = aBool;\
-								$("downloadsPanel_removeFile").value = aBool;\
-								$("downloadSound_Play").value = aBool;\
-								$("downloadFileSize").value = aBool;\
-								$("autoClose_blankTab").value = aBool;\
-								$("save_And_Open").value = aBool;\
-								$("save_And_Open_RorL").value = aBool ? 1 : 0;\
-								$("download_speed").value = aBool;\
-								$("download_checksum").value = aBool;\
-								$("download_dialog_changeName").value = aBool;\
-								$("download_dialog_changeName_encodingConvert").value = aBool;\
-								$("download_dialog_changeName_locking").value = aBool;\
-								$("download_dialog_saveas").value = aBool;\
-								$("download_dialog_saveTo").value = aBool;\
-								$("download_dialog_saveTo_suffix").value = aBool ? 1 : 0;\
-								$("download_dialog_showCompleteURL").value = aBool;\
-								$("download_dialog_doubleclicksaveL").value = aBool;\
-								$("download_dialog_doubleclickanyW").value = aBool;\
-								$("dontRemoveFinishedDownloads").value = aBool;\
+							function feedBack() {\
+								opener.gBrowser.selectedTab = opener.gBrowser.addTab("https://github.com/GH-Kelo/userChromeJS/issues");\
 							}\
 							function changeStatus() {\
 								$("new_Download_popups").disabled = !($("new_Download").value);\
@@ -397,9 +377,8 @@
 							</hbox>\
 						</groupbox>\
 						<hbox flex="1">\
-							<button dlgtype="extra1" label="还原默认值" />\
-							<button dlgtype="extra2" label="全选" />\
-							<spacer flex="1" />\
+							<button dlgtype="extra1" label="反馈"/>\
+							<spacer flex="1"/>\
 							<button dlgtype="accept"/>\
 							<button dlgtype="cancel"/>\
 						</hbox>\
