@@ -1180,7 +1180,6 @@
 			}
 		},
 		dontRemoveFinishedDownloads: function(enable) {
-			console.log("start");
 			var {DownloadIntegration} = Cu.import("resource://gre/modules/DownloadIntegration.jsm", {});
 			var store = DownloadIntegration._store;
 			if (!enable) {
@@ -1204,19 +1203,14 @@
 				}
 				var MaxRetentionHours = self.getPrefs(1, "download_dontRemoveFinishedDownloads_MaxRetentionHours");
 				var MinStoreThreshold = self.getPrefs(1, "download_dontRemoveFinishedDownloads_MinStoreThreshold");
-				console.log(MaxRetentionHours, MinStoreThreshold);
 				var downloads = DownloadIntegration._store.list._downloads;
-				console.log(downloads);
 				if (MinStoreThreshold <= downloads.length) {
 					return true;
 				}
 				// var leaveTime = downloads[Math.max(0, dlCount - 1 - minStore)].startTime;
 				var older = Date.now() - MaxRetentionHours*60*60*1000;
-				console.log(download.startTime > older);
 				return download.startTime > older;
 			};
-			console.log(wrapped);
-			console.log(DownloadIntegration.shouldPersistDownload);
 			store.onsaveitem = wrapped;
 		},
 	};
