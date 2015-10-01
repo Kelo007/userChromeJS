@@ -29,6 +29,7 @@ newDownloadPlus.uc.js
   - [x] "保存并打开"，新增打开方式（打开所在文件夹、打开文件）。  
   - [x] "下载面板显示下载速度" 功能。  
   - [x] "Hash 计算" 功能。  
+  - [x] "重启浏览器下载面板不删除记录" 功能。  
   - [ ] "保存到" 设置文件夹的UI 正在开发中，敬请期待。  *如要修改在脚本826行。*   
   - [ ] "根据后缀名自动保存到指定文件夹" 功能正在开发中，敬请期待。  
 
@@ -36,6 +37,7 @@ newDownloadPlus.uc.js
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/downloadPlus 设置.png "downloadPlus 设置")   
 ![](https://github.com/GH-Kelo/userChromeJS/raw/master/.test/img/Hash 计算.png "Hash 计算")   
 ###更新记录  
+ - 2015.10.01 新增"重启浏览器下载面板不删除记录" 功能，增强"Hash 计算"功能
  - 2015.09.19 修复"另存为..."的一个错误
  - 2015.05.09 优化代码，新增"Hash 计算功能"。  
  - 2015.05.07 使用黒仪大螃蟹的最新"从硬盘中删除"代码，增加"下载面板显示下载速度"功能，改名为newDownloadPlus.uc.js。  
