@@ -30,7 +30,19 @@
         cache: {}
       };
 
-      downloadPlus.extend = function(location, pref, fn, obj) {
+      /**
+       * option Object
+       * {
+       *   pref: String,
+       *   loaction: String,
+       *   init: function() {},
+       *   uninit: function() {},
+       * }
+       * contrlFn( downloadPlus, pref, [{ getPref: function() {} }])
+       *   return true > init
+       *   return false > uninit
+       */
+      downloadPlus.extend = function(option, contrlFn) {
 
       }
 
