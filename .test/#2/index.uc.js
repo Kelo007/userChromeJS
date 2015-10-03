@@ -23,12 +23,26 @@
     Cu.import("resource://gre/modules/Services.jsm");
   }
 
+  /******************************************************************************/
+
   var config = {
     folder: "downloadPlus",
-    token: "UChrm"
+    token: "UChrm",
+    branchRoot: "userChromeJS.downloadPlus."
   };
 
-  var Utils = {};
+  /******************************************************************************/
+
+  var Utils = {
+    mix: function(target, options) {
+      for (var i in options) {
+        if (!(i in target)) {
+          target[i] = options[i];
+        }
+      }
+      return target;
+    }
+  };
 
   Utils.type = (function(context) {
     ["Boolean", "Number", "String", "Function", "Array", "Date", "RegExp", "Object", "Error", "Undefined"].forEach(function(name) {
@@ -42,8 +56,11 @@
     };
   })(Utils);
 
+  /******************************************************************************/
+
   var downloadPlus = {
-    get prefs() Services.prefs.getBranch("userChromeJS.downloadPlus."),
+    get branchRoot() config.branchRoot,
+    get branch() Services.prefs.getBranch(this.branchRoot),
     get Window() Services.wm.getMostRecentWindow("downloadPlus:Preferences"),
     get mainwin() Services.wm.getMostRecentWindow("navigator:browser"),
     get appVersion() Services.appinfo.version.split(".")[0],
@@ -51,7 +68,7 @@
 
     init: function() {
       if (location.href == "chrome://browser/content/browser.xul") {
-        this.prefs.addObserver('', this, false);
+        this.branch.addObserver('', this, false);
       }
       this.rebuild();
       window.addEventListener("unload", function() {
@@ -64,10 +81,16 @@
       cache.forEach(function(item) {
         downloadPlus.notify(item, "downloadPlus:destroy");
       });
-      this.prefs.removeObserver('', this, false);
+      this.branch.removeObserver('', this, false);
+    },
+
+    openPref: function() {
+      window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + this.UIManger.build(), '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
     },
 
     rebuild: function() {
+      delete this._cache;
+      this._cache = [];
       try {
         userChrome.import(this.config.folder, this.config.token);
       } catch (e) {}
@@ -89,7 +112,8 @@
         var run = subject.controlFn(subject, topic, data, subject.options);
         if (run === true) {
           subject.options.init();
-        } else if (run === false) {
+        }
+        else if (run === false) {
           subject.options.uninit();
         }
       });
@@ -98,7 +122,7 @@
     _cache: [],
     store: function() {
       var args = Array.prototype.slice.call(arguments),
-        cache = this._cache;
+          cache = this._cache;
       return cache.push.apply(cache, args);
     },
 
@@ -107,10 +131,14 @@
     }
   };
 
+  /******************************************************************************/
+
   downloadPlus.UIManger = {
     preference: [],
     main: [],
-    script: [],
+    script: [
+    "function feedBack() {opener.gBrowser.selectedTab = opener.gBrowser.addTab('https://github.com/GH-Kelo/userChromeJS/issues');}"
+    ],
     parsePreference: function(preference) {
       if (Utils.isObject(preference)) {
         var id = preference.id,
@@ -139,7 +167,7 @@
       }
       else if (Utils.isArray(script) && script.length > 0) {
         var item = script.shift();
-        return this.parseMain(item)
+        return this.parseScript(item)
       }
     },
     /**
@@ -174,81 +202,22 @@
                 '<script>',
                   this.script.join("\n"),
                 '</script>',
-                this.main.join("\n")
+                  this.main.join("\n"),
+                '<hbox flex="1">',
+                  '<button dlgtype="extra1" label="反馈"/>',
+                  '<spacer flex="1"/>',
+                  '<button dlgtype="accept"/>',
+                  '<button dlgtype="cancel"/>',
+                '</hbox>',
+            '</prefpane>',
+          '</prefwindow>'
           ].join("\n");
-          return ret;
+      return ret;
     },
   };
 
-  var defaultOption = {
-    location: "chrome://browser/content/browser.xul",
-    pref: new Date().getTime()
-  };
+  /******************************************************************************/
 
-  /**
-   * 主要添加接口
-   * @param  {[Object]} options
-   * {
-   *   pref: String,
-   *   include: String,
-   *   init: function() {},
-   *   uninit: function() {},
-   * }
-   * @param  {[Function]} controlFn [description]
-   * controlFn( subject, topic, data, [options])
-   *   return true > init
-   *   return false > uninit
-   */
-   */
-  downloadPlus.extend = function(options, controlFn) {
-    options = mix(options, defaultOption);
-
-    var include = options.include;
-    var pref = options.pref;
-    var UI = options.UI;
-    parsePref(pref);
-    parseUI(UI);
-
-    var storage = {
-      include: include,
-      pref: pref,
-      UI: UI,
-      options: options,
-      controlFn: controlFn
-    };
-    this.store(storage);
-    this.notify(storage, "downloadPlus:extend");
-
-    var href = location.href;
-    if (href === include) {
-      this.notify(storage, "downloadPlus:run", href);
-    }
-  };
-
-  function parsePref(pref) {
-
-  }
-
-  function parseUI(UI) {
-    var preference = UI.preference;
-    var main = UI.main;
-    var script = UI.script;
-    downloadPlus.UIManger.add(preference, main, script);
-  }
-
-
-  // ***************************************** //
-  function mix(target, options) {
-    for (var i in options) {
-      if (!(i in target)) {
-        target[i] = options[i];
-      }
-    }
-    return target;
-  }
-
-  // ***************************************** //
-  
   function Pref(branch, key) {
     this.branchName = branch;
     this.branch = Services.prefs.getBranch(branch);
@@ -303,9 +272,85 @@
   };
 
   downloadPlus.Pref = function(key) {
-    return new Pref(this.prefs, key);
+    return new Pref(downloadPlus.branchRoot, key);
   };
 
+  /******************************************************************************/
+
+  var defaultOptions = {
+    include: "chrome://browser/content/browser.xul",
+    pref: {
+      key: new Date().getTime().toString(),
+      value: false
+    },
+    UI: {
+      preference: [],
+      main: [],
+      script: []
+    }
+  };
+
+  /**
+   * 主要添加接口
+   * @param  {[Object]} options
+   * {
+   *   pref: Object,
+   *   {
+   *     key: String
+   *     value: String
+   *   }
+   *   include: String,
+   *   init: function() {},
+   *   uninit: function() {},
+   * }
+   * @param  {[Function]} controlFn [description]
+   * controlFn( subject, topic, data, [options])
+   *   return true > init
+   *   return false > uninit
+   */
+  downloadPlus.extend = function(options, controlFn) {
+    options = Utils.mix(options, defaultOptions);
+
+    var include = options.include;
+    var pref = options.pref;
+    var UI = options.UI;
+    parsePref(pref);
+    parseUI(UI);
+
+    var storage = {
+      include: include,
+      pref: pref,
+      UI: UI,
+      options: options,
+      controlFn: controlFn
+    };
+    this.store(storage);
+    this.notify(storage, "downloadPlus:extend");
+
+    var href = location.href;
+    if (href === include) {
+      this.notify(storage, "downloadPlus:run", href);
+    }
+  };
+
+  function parsePref(pref) {
+    var key = pref.key;
+    var value = pref.value;
+    console.log(key, value)
+    downloadPlus.Pref(pref)
+      .load(value);
+  }
+
+  function parseUI(UI) {
+    console.log(UI);
+    var preference = UI.preference;
+    var main = UI.main;
+    var script = UI.script;
+    downloadPlus.UIManger.add(preference, main, script);
+  }
+
+  /******************************************************************************/
 
   window.downloadPlus = downloadPlus;
+  downloadPlus.init();
 })();
