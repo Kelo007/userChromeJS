@@ -41,6 +41,13 @@
         }
       }
       return target;
+    },
+    makeArray: function(arr) {
+      var emptArray = [];
+      return emptArray.concat(arr);
+    },
+    async: function(fn) {
+      setTimeout(fn, 0);
     }
   };
 
@@ -70,27 +77,28 @@
       if (location.href == "chrome://browser/content/browser.xul") {
         this.branch.addObserver('', this, false);
       }
-      this.rebuild();
       window.addEventListener("unload", function() {
         downloadPlus.onDestroy();
       }, false);
+      this.import();
     },
 
     onDestroy: function() {
-      var cache = this._cache;
-      cache.forEach(function(item) {
-        downloadPlus.notify(item, "downloadPlus:destroy");
+      var plugins = this.plugins;
+      plugins.forEach(function(plugin) {
+        downloadPlus.notify(plugin, "downloadPlus:destroy");
       });
       this.branch.removeObserver('', this, false);
     },
 
     openPref: function() {
-      window.openDialog("data:application/vnd.mozilla.xul+xml;charset=UTF-8," + this.UIManger.build(), '', 'chrome,titlebar,toolbar,centerscreen,dialog=no');
+      window.openDialog(
+        "data:application/vnd.mozilla.xul+xml;charset=UTF-8," + this.UIManger.build(), '', 
+        'chrome,titlebar,toolbar,centerscreen,dialog=no'
+      );
     },
 
-    rebuild: function() {
-      delete this._cache;
-      this._cache = [];
+    import: function() {
       try {
         userChrome.import(this.config.folder, this.config.token);
       } catch (e) {}
@@ -98,18 +106,21 @@
 
     observe: function(subject, topic, data) {
       if (topic === "nsPref:changed") {
-        var cache = this._cache;
-        cache.forEach(function(item) {
-          if (item.pref === data) {
-            downloadPlus.notify(item, "downloadPlus:prefchanged");
+        var plugins = this.plugins;
+        plugins.forEach(function(plugin) {
+          var pref = plugin.Pref;
+          if (pref.key === data) {
+            downloadPlus.notify(
+              plugin, "downloadPlus:prefchanged", pref.get()
+            );
           }
         });
       }
     },
 
     notify: function(subject, topic, data) {
-      this.async(function() {
-        var run = subject.controlFn(subject, topic, data, subject.options);
+      Utils.async(function() {
+        var run = subject.controller(subject, topic, data, subject.options);
         if (run === true) {
           subject.options.init();
         }
@@ -119,15 +130,11 @@
       });
     },
 
-    _cache: [],
+    plugins: [],
     store: function() {
       var args = Array.prototype.slice.call(arguments),
-          cache = this._cache;
-      return cache.push.apply(cache, args);
-    },
-
-    async: function(fn) {
-      setTimeout(fn, 0);
+          plugins = this.plugins;
+      return plugins.push.apply(plugins, args);
     }
   };
 
@@ -137,7 +144,7 @@
     preference: [],
     main: [],
     script: [
-    "function feedBack() {opener.gBrowser.selectedTab = opener.gBrowser.addTab('https://github.com/GH-Kelo/userChromeJS/issues');}"
+      "function feedBack() {opener.gBrowser.selectedTab = opener.gBrowser.addTab('https://github.com/GH-Kelo/userChromeJS/issues');}"
     ],
     parsePreference: function(preference) {
       if (Utils.isObject(preference)) {
@@ -148,7 +155,7 @@
         );
       }
       else if (Utils.isArray(preference) && preference.length > 0) {
-        var item = preference.shift();
+        var item = Utils.makeArray(preference).shift();
         return this.parsePreference(item)
       }
     },
@@ -157,8 +164,8 @@
         this.main.push(main);
       }
       else if (Utils.isArray(main) && main.length > 0) {
-        var item = main.shift();
-        return this.parseMain(item)
+        var item = Utils.makeArray(main).shift();
+        return this.parseMain(item);
       }
     },
     parseScript: function(script) {
@@ -166,8 +173,8 @@
         this.script.push(script);
       }
       else if (Utils.isArray(script) && script.length > 0) {
-        var item = script.shift();
-        return this.parseScript(item)
+        var item = Utils.makeArray(script).shift();
+        return this.parseScript(item);
       }
     },
     /**
@@ -181,7 +188,7 @@
      */
     add: function(preference, main, script) {
       this.parsePreference(preference);
-      this.parseMain(preference);
+      this.parseMain(main);
       this.parseScript(script);
     },
     build: function() {
@@ -193,7 +200,7 @@
                 'title="downloadPlus 配置"',
                 'onload="changeStatus();"',
                 'buttons="accept,cancel,extra1"',
-                'ondialogextra1="feedBack();',
+                'ondialogextra1="feedBack();"',
                 'windowtype="downloadPlus:Preferences">',
               '<prefpane id="main" flex="1">',
                 '<preferences>',
@@ -212,7 +219,7 @@
             '</prefpane>',
           '</prefwindow>'
           ].join("\n");
-      return ret;
+      return encodeURIComponent(ret);ret;
     },
   };
 
@@ -239,7 +246,7 @@
         return this.branch.getIntPref(this.key);
       }
       if (type === "boolean") {
-        return this.branch.getCharPref(this.key);
+        return this.branch.getBoolPref(this.key);
       }
     },
     set: function(value) {
@@ -253,7 +260,7 @@
         this.branch.setIntPref(this.key, value);
       }
       if (type === "boolean") {
-        this.branch.setCharPref(this.key, value);
+        this.branch.setBoolPref(this.key, value);
       }
       return this;
     },
@@ -278,16 +285,7 @@
   /******************************************************************************/
 
   var defaultOptions = {
-    include: "chrome://browser/content/browser.xul",
-    pref: {
-      key: new Date().getTime().toString(),
-      value: false
-    },
-    UI: {
-      preference: [],
-      main: [],
-      script: []
-    }
+    include: "chrome://browser/content/browser.xul"
   };
 
   /**
@@ -303,28 +301,25 @@
    *   init: function() {},
    *   uninit: function() {},
    * }
-   * @param  {[Function]} controlFn [description]
-   * controlFn( subject, topic, data, [options])
+   * @param  {[Function]} controller [description]
+   * controller( subject, topic, data, [options])
    *   return true > init
    *   return false > uninit
    */
-  downloadPlus.extend = function(options, controlFn) {
+  downloadPlus.extend = function(options, controller) {
+    if (!Utils.isObject(options) || !Utils.isFunction(controller)) {
+      throw "Not enough arguments";
+      return this;
+    }
+    if (!Utils.isFunction(options.init) || !Utils.isFunction(options.uninit)) {
+      throw "`init` option and `uninit` option must be function";
+      return this;
+    }
+
     options = Utils.mix(options, defaultOptions);
+    var plugin = new Plugin(options, controller);
 
-    var include = options.include;
-    var pref = options.pref;
-    var UI = options.UI;
-    parsePref(pref);
-    parseUI(UI);
-
-    var storage = {
-      include: include,
-      pref: pref,
-      UI: UI,
-      options: options,
-      controlFn: controlFn
-    };
-    this.store(storage);
+    this.store(plugin);
     this.notify(storage, "downloadPlus:extend");
 
     var href = location.href;
@@ -333,20 +328,38 @@
     }
   };
 
+
+  function Plugin(options, controller) {
+    this.controller = options.controller;
+    this.options = options.options;
+    this.include = options.include;
+    if ("pref" in options) {
+      this.Pref = parsePref(options.pref);
+    }
+    if ("UI" in options) {
+      this.UI = options.UI;
+      parseUI(options.UI);
+    }
+  }
+  Plugin.prototype = {
+    getPref: function() {
+      return this.Pref.get();
+    }
+  };
+
   function parsePref(pref) {
     var key = pref.key;
     var value = pref.value;
-    console.log(key, value)
-    downloadPlus.Pref(pref)
-      .load(value);
+    return downloadPlus.Pref(key)
+        .load(value);
   }
 
   function parseUI(UI) {
-    console.log(UI);
     var preference = UI.preference;
     var main = UI.main;
     var script = UI.script;
-    downloadPlus.UIManger.add(preference, main, script);
+    downloadPlus.UIManger
+        .add(preference, main, script);
   }
 
   /******************************************************************************/
