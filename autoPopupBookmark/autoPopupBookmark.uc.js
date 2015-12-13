@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name	AutoHidebookmark-items.uc.js
+// @name	autoPopupBookmark.uc.js
 // @namespace	http://bbs.kafan.cn/forum.php?mod=redirect&goto=findpost&ptid=1817667&pid=34415770
 // @include	main
 // @author	Kelo
@@ -59,6 +59,9 @@
 		else {
 			if (_isMenu && elem !== _popElem) {
 				hideElement(_popElem);
+				popup(elem);
+			}
+			else if (elem === _popElem && !elem.open) {
 				popup(elem);
 			}
 		}
