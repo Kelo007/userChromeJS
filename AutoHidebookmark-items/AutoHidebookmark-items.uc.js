@@ -1,66 +1,112 @@
 // ==UserScript==
-// @name           AutoHidebookmark-items.uc.js
-// @namespace http://bbs.kafan.cn/forum.php?mod=redirect&goto=findpost&ptid=1817667&pid=34415770
-// @author         Kelo
+// @name	AutoHidebookmark-items.uc.js
+// @namespace	http://bbs.kafan.cn/forum.php?mod=redirect&goto=findpost&ptid=1817667&pid=34415770
+// @include	main
+// @author	Kelo
 // ==/UserScript==
-location == 'chrome://browser/content/browser.xul' && (function() {
-	var HideTimer = null,PopTimer = null,popels = null,els = null;
-	setTimeout(function() {
-		function mouseover() {
-			els = this;
-			if (popels && els != popels) HidePopup();
-			if (HideTimer) {
-				window.clearTimeout(HideTimer);
-				HideTimer = null;
+(function() {
+	var hideDelay = 500,
+		popDelay = 500;
+	var _ELEMID = 'PlacesToolbarItems',
+		_elem = null;
+	var _popElem = null;
+	var _timer = null,
+		_isRunning = false;
+
+	function addEvent(mouseover, mouseout) {
+		_elem = document.getElementById(_ELEMID);
+		_elem.addEventListener('mouseover', mouseover);
+		_elem.addEventListener('mouseout', mouseout);
+	}
+
+	function isMenu(elem) {
+		return elem.className === 'bookmark-item' &&
+			elem.type === 'menu' &&
+			elem.parentNode === _elem;
+	}
+
+	function isInMenu(elem, menu) {
+		if (elem.localName === 'window' || !elem.parentNode) {
+			return false;
+		}
+		if (elem.parentNode === menu) {
+			return true;
+		}
+		else {
+			return isInMenu(elem.parentNode, menu);
+		}
+	}
+
+	function isItem(elem) {
+		return isInMenu(elem, _popElem);
+	}
+
+	function isInContextMenu() {
+		return document.getElementById('placesContext').state === 'open';
+	}
+
+	function mouseover(event) {
+		var elem = event.target;
+		var _isMenu = isMenu(elem),
+			_isItem = isItem(elem);
+		if (!_isMenu && !_isItem) {
+			return;
+		}
+		clearTimer();
+		if (_popElem == null) {
+			popup(elem);
+		}
+		else {
+			if (_isMenu && elem !== _popElem) {
+				hideElement(_popElem);
+				popup(elem);
 			}
-			if (!PopTimer)
-				PopTimer = window.setTimeout(function() {
-					AutoPopup();
-				}, 500);
 		}
+	}
 
-		function mouseout() {
-			els = this;
-			if (PopTimer) {
-				window.clearTimeout(PopTimer);
-				PopTimer = null;
-			}
-			if (!HideTimer)
-				HideTimer = window.setTimeout(function() {
-					HidePopup();
-				}, 500);
+	function mouseout(event) {
+		var elem = event.target;
+		clearTimer();
+		if (_popElem && !isInContextMenu()) {
+			hide(_popElem);
 		}
+	}
 
-		function AutoPopup() {
-			PopTimer = null;
-			els.open = true;
-			popels = els;
+	function hide(elem, delay) {
+		_isRunning = true;
+		_timer = setTimeout(function() {
+			hideElement(elem);
+			_popElem = null;
+			_isRunning = false;
+		}, delay || hideDelay);
+	}
+
+	function popup(elem, delay) {
+		_isRunning = true;
+		_timer = setTimeout(function() {
+			popupElement(elem);
+			_popElem = elem;
+			_isRunning = false;
+		}, delay || popDelay);
+	}
+
+	function hideElement(elem) {
+		elem.open = false;
+	}
+
+	function popupElement(elem) {
+		elem.open = true;
+	}
+
+	function clearTimer() {
+		if (_isRunning) {
+			clearTimeout(_timer);
 		}
-
-		function HidePopup() {
-			HideTimer = null;
-			if (popels) popels.open = false;
-			popels = null;
-		}
-
-		function addEvent() {
-			var els = document.querySelectorAll('#PlacesToolbarItems > toolbarbutton.bookmark-item[type="menu"]');
-			for (var i = 0; i < els.length; i++) {
-				els[i].addEventListener('mouseover', mouseover, false);
-				els[i].addEventListener('mouseout', mouseout, false);
-				/*els[i].onmouseover = mouseover;
-				els[i].onmouseout = mouseout;*/
-			}
-		}
-                         
-		addEvent();
-                         	document.getElementById("PersonalToolbar").addEventListener('DOMAttrModified', addEvent, false); //Dom 结构变化
-
-		//定时器定时查看变化
-		/*setInterval(function checkEvent(){
-                                     var checkels = document.querySelectorAll('#PlacesToolbarItems > toolbarbutton.bookmark-item[type="menu"]');
-                                      if(!checkels[0].onmouseover) addEvent();
-		},2000);*/
-
-	}, 0);
+		_isRunning = false;
+		_timer = null;
+	}
+	document.addEventListener('DOMContentLoaded', function() {
+		addEvent(mouseover, mouseout);
+	});
+	
 })();
