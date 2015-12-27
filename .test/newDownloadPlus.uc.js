@@ -1166,16 +1166,15 @@
 					DownloadIntegration.shouldPersistDownload = DownloadIntegration._shouldPersistDownloadFix;
 					delete DownloadIntegration._shouldPersistDownloadFix;
 				}
-				if ("_shouldPersistDownloadFix" in store) {
+				if (store && "_shouldPersistDownloadFix" in store) {
 					store.onsaveitem = store._onsaveitemFix;
 					delete store._onsaveitemFix;
+					store.save();
 				}
-				store.save();
 				return;
 			}
 			var self = this;
 			DownloadIntegration._shouldPersistDownloadFix = DownloadIntegration.shouldPersistDownload;
-			store._onsaveitemFix = store.onsaveitem;
 			var wrapped = DownloadIntegration.shouldPersistDownload = function(download) {
 				if (download.hasPartialData || !download.succeeded) {
 					return true;
@@ -1190,7 +1189,10 @@
 				var older = Date.now() - MaxRetentionHours*60*60*1000;
 				return download.startTime > older;
 			};
-			store.onsaveitem = wrapped;
+			if (store) {
+				store._onsaveitemFix = store.onsaveitem;
+				store.onsaveitem = wrapped;
+			}
 		},
 	};
 
