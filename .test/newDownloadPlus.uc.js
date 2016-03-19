@@ -543,9 +543,12 @@
 					menuitem.onclick = function(e) {
 						if (e.target.disabled) return;
 						var path = "";
-						if (typeof DownloadsViewItemController != "undefined") {
+						if (typeof DownloadsViewItemController != "undefined" || DownloadsView.itemForElement) {
 							let selectedItem = DownloadsView.richListBox.selectedItem;
-							if (DownloadsView.controllerForElement) {
+							if (DownloadsView.itemForElement) {
+								path = DownloadsView.itemForElement(selectedItem).download.target.path;
+							}
+							else if (DownloadsView.controllerForElement) {
 								//FF38
 								path = DownloadsView.controllerForElement(selectedItem).download.target.path;
 							} else {
@@ -553,8 +556,8 @@
 								path = (new DownloadsViewItemController(selectedItem)).dataItem.file;
 							}
 						} else {
-							DownloadsView = document.getElementById("downloadsRichListBox")._placesView;
-							let selectedItemsShell = DownloadsView._richlistbox.selectedItems[0]._shell;
+							dv = document.getElementById("downloadsRichListBox")._placesView;
+							let selectedItemsShell = dv._richlistbox.selectedItems[0]._shell;
 							if (!(selectedItemsShell._metaData && selectedItemsShell._metaData.filePath)) {
 								//FF38
 								path = (selectedItemsShell._sessionDownload || selectedItemsShell._historyDownload).target.path;
@@ -584,9 +587,12 @@
 							file.remove(0);
 						}
 
-						if (typeof DownloadsViewItemController != "undefined") {
+						if (typeof DownloadsViewItemController != "undefined" || DownloadsView.itemForElement) {
 							let selectedItem = DownloadsView.richListBox.selectedItem;
-							if (DownloadsView.controllerForElement) {
+							if (DownloadsView.itemForElement) {
+								DownloadsView.itemForElement(selectedItem).doCommand("cmd_delete");
+							}
+							else if (DownloadsView.controllerForElement) {
 								//FF38
 								DownloadsView.controllerForElement(selectedItem).doCommand("cmd_delete");
 							} else {
@@ -594,7 +600,7 @@
 								(new DownloadsViewItemController(selectedItem)).doCommand("cmd_delete");
 							}
 						} else {
-							DownloadsView.doCommand("cmd_delete");
+							dv.doCommand("cmd_delete");
 						}
 					};
 
@@ -997,9 +1003,12 @@
 							return;
 						}
 						var path = "";
-						if (typeof DownloadsViewItemController != "undefined") {
+						if (typeof DownloadsViewItemController != "undefined" || DownloadsView.itemForElement) {
 							let selectedItem = DownloadsView.richListBox.selectedItem;
-							if (DownloadsView.controllerForElement) {
+							if (DownloadsView.itemForElement) {
+								path = DownloadsView.itemForElement(selectedItem).download.target.path;
+							}
+							else if (DownloadsView.controllerForElement) {
 								//FF38
 								path = DownloadsView.controllerForElement(selectedItem).download.target.path;
 							} else {
@@ -1007,8 +1016,8 @@
 								path = (new DownloadsViewItemController(selectedItem)).dataItem.file;
 							}
 						} else {
-							DownloadsView = document.getElementById("downloadsRichListBox")._placesView;
-							let selectedItemsShell = DownloadsView._richlistbox.selectedItems[0]._shell;
+							dv = document.getElementById("downloadsRichListBox")._placesView;
+							let selectedItemsShell = dv._richlistbox.selectedItems[0]._shell;
 							if (!(selectedItemsShell._metaData && selectedItemsShell._metaData.filePath)) {
 								//FF38
 								path = (selectedItemsShell._sessionDownload || selectedItemsShell._historyDownload).target.path;
@@ -1059,7 +1068,7 @@
 							function toHexString(charCode) {
 								return ('0' + charCode.toString(16)).slice(-2);
 							}
-							var s = [toHexString(hash.charCodeAt(i)) for (i in hash)].join('');
+							var s = [for (i of hash) toHexString(i.charCodeAt(0))].join('');
 							return s;
 						}
 
